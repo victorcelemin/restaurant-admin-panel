@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx next build)",
+      "Bash(npm install:*)",
+      "Bash(python:*)",
+      "Bash(docker:*)",
+      "Bash(docker compose:*)",
+      "Bash(pip:*)",
+      "Bash(node --version:*)",
+      "Bash(npm:*)",
+      "Bash(curl:*)",
+      "Bash(timeout:*)",
+      "Bash(npx next dev:*)",
+      "Bash(__NEW_LINE_4b541b244863b6a2__ echo \"\")",
+      "Bash(__NEW_LINE_1fe61915d9337789__ echo \"\")",
+      "Bash(__NEW_LINE_d851668fabd59bd7__ echo \"\")",
+      "Bash(__NEW_LINE_b9f79bcbaa1b5bb5__ echo \"\")",
+      "Bash(__NEW_LINE_2e934a6b45f2be0a__ echo \"\")",
+      "Bash(cd:*)",
+      "Bash(npx tsc:*)",
+      "Bash(Start-Process \"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\")",
+      "Bash(tasklist:*)",
+      "Bash(powershell -Command \"Get-Process | Where-Object {$_Name -like ''*docker*''} | Select-Object Name, Id\")",
+      "Bash(cmd /c \"start \"\"\"\" \"\"C:\\\\Program Files\\\\Docker\\\\Docker\\\\Docker Desktop.exe\"\"\")"
+    ]
+  }
+}

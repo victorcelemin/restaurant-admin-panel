@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Environment
+.env*.local
+
+# Python
+backend/__pycache__/
+backend/**/__pycache__/
+**/__pycache__/
+backend/.env
+backend/*.pyc
+backend/venv/
+backend/.venv/
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+*.pyc
+__pycache__/
+
+# Misc
+.DS_Store
+*.pem
+npm-debug.log*
+next-env.d.ts
+
+# IDE
+.vscode/
+.idea/
