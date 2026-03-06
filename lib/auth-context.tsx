@@ -1,6 +1,14 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  type ReactNode,
+} from "react"
 import { auth as authApi, type User } from "@/lib/api"
 
 interface AuthContextType {
@@ -15,6 +23,15 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
+function setCookie(name: string, value: string, days = 1) {
+  const expires = new Date(Date.now() + days * 864e5).toUTCString()
+  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`
+}
+
+function deleteCookie(name: string) {
+  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
@@ -26,16 +43,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (savedToken && savedUser) {
       setToken(savedToken)
       setUser(JSON.parse(savedUser))
-      // Validate token is still valid
-      authApi.me().then((u) => {
-        setUser(u)
-        localStorage.setItem("user", JSON.stringify(u))
-      }).catch(() => {
-        localStorage.removeItem("token")
-        localStorage.removeItem("user")
-        setToken(null)
-        setUser(null)
-      }).finally(() => setLoading(false))
+      authApi
+        .me()
+        .then((u) => {
+          setUser(u)
+          localStorage.setItem("user", JSON.stringify(u))
+        })
+        .catch(() => {
+          localStorage.removeItem("token")
+          localStorage.removeItem("user")
+          deleteCookie("auth_token")
+          setToken(null)
+          setUser(null)
+        })
+        .finally(() => setLoading(false))
     } else {
       setLoading(false)
     }
@@ -45,6 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await authApi.login(username, password)
     localStorage.setItem("token", res.access_token)
     localStorage.setItem("user", JSON.stringify(res.user))
+    setCookie("auth_token", res.access_token, 1)
     setToken(res.access_token)
     setUser(res.user)
   }, [])
@@ -52,15 +74,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem("token")
     localStorage.removeItem("user")
+    deleteCookie("auth_token")
     setToken(null)
     setUser(null)
   }, [])
 
-  const hasRole = useCallback((...roles: string[]) => {
-    return user ? roles.includes(user.role) : false
-  }, [user])
+  const hasRole = useCallback(
+    (...roles: string[]) => (user ? roles.includes(user.role) : false),
+    [user]
+  )
 
-  const isAdmin = user?.role === "administrador"
+  const isAdmin = useMemo(() => user?.role === "administrador", [user])
 
   return (
     <AuthContext.Provider value={{ user, token, loading, login, logout, hasRole, isAdmin }}>

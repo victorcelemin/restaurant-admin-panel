@@ -235,4 +235,32 @@ export const settings = {
     request<{ key: string; value: string }>("/api/settings/", { method: "PUT", body: JSON.stringify({ key, value }) }),
 }
 
+// --- Payments (Stripe) ---
+export interface CheckoutSessionItem {
+  name: string
+  price: number
+  quantity: number
+}
+
+export interface CreateCheckoutSessionRequest {
+  items: CheckoutSessionItem[]
+  customer_name: string
+  customer_email: string
+  success_url: string
+  cancel_url: string
+}
+
+export interface CheckoutSessionResponse {
+  url: string
+  session_id: string
+}
+
+export const payments = {
+  createCheckoutSession: (data: CreateCheckoutSessionRequest) =>
+    request<CheckoutSessionResponse>("/api/payments/create-checkout-session", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+}
+
 export { ApiError }

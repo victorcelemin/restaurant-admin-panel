@@ -2,18 +2,21 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ShoppingBag, DollarSign, Clock, TrendingUp } from "lucide-react"
-import { formatCurrency } from "@/lib/store"
 import { reports } from "@/lib/api"
 import { useApi } from "@/hooks/use-api"
 
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(amount)
+}
+
 export function DailySummary() {
-  const { data: report, loading, error } = useApi(() => reports.daily(), [])
+  const { data: report, loading } = useApi(() => reports.daily(), [])
 
   const stats = [
     {
       title: "Pedidos del Dia",
       value: report?.total_orders.toString() ?? "0",
-      subtitle: `${report?.completed_orders ?? 0} completados`,
+      subtitle: `${report?.total_orders ?? 0 - (report?.cancelled_orders ?? 0)} activos`,
       icon: ShoppingBag,
       color: "text-primary",
       bg: "bg-primary/10",
@@ -35,22 +38,14 @@ export function DailySummary() {
       bg: "bg-chart-4/10",
     },
     {
-      title: "Cancelados",
-      value: (report?.cancelled_orders ?? 0).toString(),
-      subtitle: "pedidos cancelados",
+      title: "En Preparacion",
+      value: (report ? report.total_orders - report.completed_orders - report.cancelled_orders : 0).toString(),
+      subtitle: "pedidos activos",
       icon: Clock,
       color: "text-warning",
       bg: "bg-warning/10",
     },
   ]
-
-  if (error) {
-    return (
-      <div className="rounded-2xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-        Error al cargar el resumen del dia: {error}
-      </div>
-    )
-  }
 
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

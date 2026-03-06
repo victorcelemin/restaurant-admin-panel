@@ -1,18 +1,20 @@
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { formatCurrency } from "@/lib/store"
 import { orders as ordersApi } from "@/lib/api"
 import { useApi } from "@/hooks/use-api"
+
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(amount)
+}
 
 export function TopProducts() {
   const { data: ordersList, loading } = useApi(() => ordersApi.list(), [])
 
-  // Calculate top products from today's orders
   const topProducts = (() => {
     if (!ordersList) return []
     const productMap = new Map<number, { name: string; quantity: number; revenue: number }>()
-    for (const order of ordersList.filter(o => o.status !== "cancelado")) {
+    for (const order of ordersList.filter((o) => o.status !== "cancelado")) {
       for (const item of order.items) {
         const existing = productMap.get(item.product_id) || { name: item.product_name, quantity: 0, revenue: 0 }
         existing.quantity += item.quantity

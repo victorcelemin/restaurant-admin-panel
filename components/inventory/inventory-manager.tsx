@@ -24,44 +24,61 @@ import {
   DialogClose,
 } from "@/components/ui/dialog"
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import {
   Search,
   PackagePlus,
   PackageMinus,
   BarChart3,
   Package,
-  Plus,
-  Edit2,
-  Trash2,
 } from "lucide-react"
 import { toast } from "sonner"
-import {
-  getStockLevel,
-  getStockBgColor,
-  getStockLabel,
-  formatCurrency,
-} from "@/lib/store"
-import { products as productsApi, inventory as inventoryApi, type Product } from "@/lib/api"
+import { products as productsApi, inventory, type Product } from "@/lib/api"
 import { useApi } from "@/hooks/use-api"
-import { useAuth } from "@/lib/auth-context"
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts"
 
+type StockLevel = "ok" | "low" | "critical" | "out"
+
+function getStockLevel(product: Product): StockLevel {
+  if (product.stock === 0) return "out"
+  if (product.stock <= product.min_stock * 0.3) return "critical"
+  if (product.stock <= product.min_stock) return "low"
+  return "ok"
+}
+
+function getStockBgColor(level: StockLevel) {
+  switch (level) {
+    case "ok": return "bg-success/15 text-success"
+    case "low": return "bg-warning/15 text-warning"
+    case "critical": return "bg-destructive/15 text-destructive"
+    case "out": return "bg-foreground/10 text-foreground"
+  }
+}
+
+function getStockLabel(level: StockLevel) {
+  switch (level) {
+    case "ok": return "Normal"
+    case "low": return "Bajo"
+    case "critical": return "Critico"
+    case "out": return "Sin Stock"
+  }
+}
+
+function getBarColor(level: string) {
+  switch (level) {
+    case "ok": return "oklch(0.65 0.18 160)"
+    case "low": return "oklch(0.80 0.18 85)"
+    case "critical": return "oklch(0.55 0.22 27)"
+    case "out": return "oklch(0.4 0 0)"
+    default: return "oklch(0.65 0.18 160)"
+  }
+}
+
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 0 }).format(amount)
+}
+
 export function InventoryManager() {
-  const { isAdmin } = useAuth()
   const [search, setSearch] = useState("")
   const [viewMode, setViewMode] = useState<"list" | "chart">("list")
-
-  // Entry/Merma state
   const [entryProduct, setEntryProduct] = useState("")
   const [entryQty, setEntryQty] = useState("")
   const [entryNotes, setEntryNotes] = useState("")
@@ -69,12 +86,7 @@ export function InventoryManager() {
   const [mermaQty, setMermaQty] = useState("")
   const [mermaNotes, setMermaNotes] = useState("")
 
-  // Product CRUD state
-  const [showAddProduct, setShowAddProduct] = useState(false)
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
-  const [newProduct, setNewProduct] = useState({ name: "", category: "", price: "", stock: "", unit: "unidades", min_stock: "10" })
-
-  const { data: productsList, refetch } = useApi(() => productsApi.list({ active_only: true }), [])
+  const { data: productsList, loading } = useApi(() => productsApi.list(), [])
 
   const filtered = (productsList ?? []).filter(
     (p) =>
@@ -89,108 +101,47 @@ export function InventoryManager() {
     level: getStockLevel(p),
   }))
 
-  function getBarColor(level: string) {
-    switch (level) {
-      case "ok": return "oklch(0.65 0.18 160)"
-      case "low": return "oklch(0.80 0.18 85)"
-      case "critical": return "oklch(0.55 0.22 27)"
-      case "out": return "oklch(0.4 0 0)"
-      default: return "oklch(0.65 0.18 160)"
-    }
-  }
-
   async function handleEntry() {
-    if (!entryProduct || !entryQty || parseInt(entryQty) <= 0) {
-      toast.error("Selecciona un producto y cantidad valida")
+    if (!entryProduct || !entryQty) {
+      toast.error("Selecciona un producto y cantidad")
       return
     }
     try {
-      await inventoryApi.createMovement({
-        product_id: parseInt(entryProduct),
+      await inventory.createMovement({
+        product_id: Number(entryProduct),
         type: "entrada",
-        quantity: parseInt(entryQty),
+        quantity: Number(entryQty),
         notes: entryNotes,
       })
-      toast.success(`Entrada registrada: +${entryQty} unidades`)
+      const name = (productsList ?? []).find((p) => String(p.id) === entryProduct)?.name
+      toast.success(`Entrada registrada: +${entryQty} unidades de ${name}`)
       setEntryProduct("")
       setEntryQty("")
       setEntryNotes("")
-      refetch()
     } catch (err: any) {
       toast.error(err.message || "Error al registrar entrada")
     }
   }
 
   async function handleMerma() {
-    if (!mermaProduct || !mermaQty || parseInt(mermaQty) <= 0) {
-      toast.error("Selecciona un producto y cantidad valida")
+    if (!mermaProduct || !mermaQty) {
+      toast.error("Selecciona un producto y cantidad")
       return
     }
     try {
-      await inventoryApi.createMovement({
-        product_id: parseInt(mermaProduct),
+      await inventory.createMovement({
+        product_id: Number(mermaProduct),
         type: "merma",
-        quantity: parseInt(mermaQty),
+        quantity: Number(mermaQty),
         notes: mermaNotes,
       })
-      toast.success(`Merma registrada: -${mermaQty} unidades`)
+      const name = (productsList ?? []).find((p) => String(p.id) === mermaProduct)?.name
+      toast.success(`Merma registrada: -${mermaQty} unidades de ${name}`)
       setMermaProduct("")
       setMermaQty("")
       setMermaNotes("")
-      refetch()
     } catch (err: any) {
       toast.error(err.message || "Error al registrar merma")
-    }
-  }
-
-  async function handleAddProduct() {
-    if (!newProduct.name || !newProduct.category || !newProduct.price) {
-      toast.error("Completa nombre, categoria y precio")
-      return
-    }
-    try {
-      await productsApi.create({
-        name: newProduct.name,
-        category: newProduct.category,
-        price: parseFloat(newProduct.price),
-        stock: parseInt(newProduct.stock) || 0,
-        unit: newProduct.unit,
-        min_stock: parseInt(newProduct.min_stock) || 10,
-      })
-      toast.success(`Producto "${newProduct.name}" agregado`)
-      setNewProduct({ name: "", category: "", price: "", stock: "", unit: "unidades", min_stock: "10" })
-      setShowAddProduct(false)
-      refetch()
-    } catch (err: any) {
-      toast.error(err.message || "Error al crear producto")
-    }
-  }
-
-  async function handleEditProduct() {
-    if (!editingProduct) return
-    try {
-      await productsApi.update(editingProduct.id, {
-        name: editingProduct.name,
-        category: editingProduct.category,
-        price: editingProduct.price,
-        unit: editingProduct.unit,
-        min_stock: editingProduct.min_stock,
-      })
-      toast.success(`Producto "${editingProduct.name}" actualizado`)
-      setEditingProduct(null)
-      refetch()
-    } catch (err: any) {
-      toast.error(err.message || "Error al actualizar producto")
-    }
-  }
-
-  async function handleDeleteProduct(product: Product) {
-    try {
-      await productsApi.delete(product.id)
-      toast.success(`Producto "${product.name}" eliminado`)
-      refetch()
-    } catch (err: any) {
-      toast.error(err.message || "Error al eliminar producto")
     }
   }
 
@@ -204,106 +155,12 @@ export function InventoryManager() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {/* Add Product button */}
-          {isAdmin && (
-            <Dialog open={showAddProduct} onOpenChange={setShowAddProduct}>
-              <DialogTrigger asChild>
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Agregar Producto
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-card text-foreground">
-                <DialogHeader>
-                  <DialogTitle className="text-foreground">Agregar Nuevo Producto</DialogTitle>
-                </DialogHeader>
-                <div className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-2">
-                    <Label className="text-foreground">Nombre</Label>
-                    <Input
-                      placeholder="Nombre del producto"
-                      value={newProduct.name}
-                      onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                      className="bg-secondary text-foreground"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-2">
-                      <Label className="text-foreground">Categoria</Label>
-                      <Input
-                        placeholder="Ej: Plato Principal"
-                        value={newProduct.category}
-                        onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
-                        className="bg-secondary text-foreground"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <Label className="text-foreground">Precio (COP)</Label>
-                      <Input
-                        type="number"
-                        placeholder="25000"
-                        value={newProduct.price}
-                        onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
-                        className="bg-secondary text-foreground"
-                        min="1"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="flex flex-col gap-2">
-                      <Label className="text-foreground">Stock Inicial</Label>
-                      <Input
-                        type="number"
-                        placeholder="0"
-                        value={newProduct.stock}
-                        onChange={(e) => setNewProduct({ ...newProduct, stock: e.target.value })}
-                        className="bg-secondary text-foreground"
-                        min="0"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <Label className="text-foreground">Unidad</Label>
-                      <Input
-                        placeholder="unidades"
-                        value={newProduct.unit}
-                        onChange={(e) => setNewProduct({ ...newProduct, unit: e.target.value })}
-                        className="bg-secondary text-foreground"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <Label className="text-foreground">Stock Min.</Label>
-                      <Input
-                        type="number"
-                        placeholder="10"
-                        value={newProduct.min_stock}
-                        onChange={(e) => setNewProduct({ ...newProduct, min_stock: e.target.value })}
-                        className="bg-secondary text-foreground"
-                        min="0"
-                      />
-                    </div>
-                  </div>
-                </div>
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button variant="secondary" className="bg-secondary text-secondary-foreground">Cancelar</Button>
-                  </DialogClose>
-                  <Button
-                    className="bg-primary text-primary-foreground"
-                    onClick={handleAddProduct}
-                  >
-                    Agregar Producto
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-          )}
-
           {/* Entry dialog */}
           <Dialog>
             <DialogTrigger asChild>
               <Button className="bg-success text-success-foreground hover:bg-success/90">
                 <PackagePlus className="mr-2 h-4 w-4" />
-                Entrada
+                Registrar Entrada
               </Button>
             </DialogTrigger>
             <DialogContent className="bg-card text-foreground">
@@ -369,7 +226,7 @@ export function InventoryManager() {
             <DialogTrigger asChild>
               <Button variant="secondary" className="bg-destructive/10 text-destructive hover:bg-destructive/20">
                 <PackageMinus className="mr-2 h-4 w-4" />
-                Merma
+                Registrar Merma
               </Button>
             </DialogTrigger>
             <DialogContent className="bg-card text-foreground">
@@ -436,9 +293,15 @@ export function InventoryManager() {
             onClick={() => setViewMode(viewMode === "list" ? "chart" : "list")}
           >
             {viewMode === "list" ? (
-              <><BarChart3 className="mr-2 h-4 w-4" />Ver Grafico</>
+              <>
+                <BarChart3 className="mr-2 h-4 w-4" />
+                Ver Grafico
+              </>
             ) : (
-              <><Package className="mr-2 h-4 w-4" />Ver Lista</>
+              <>
+                <Package className="mr-2 h-4 w-4" />
+                Ver Lista
+              </>
             )}
           </Button>
         </div>
@@ -455,7 +318,15 @@ export function InventoryManager() {
         />
       </div>
 
-      {viewMode === "list" ? (
+      {loading && (
+        <div className="flex flex-col gap-2">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="h-16 animate-pulse rounded-xl bg-secondary" />
+          ))}
+        </div>
+      )}
+
+      {!loading && viewMode === "list" && (
         <div className="flex flex-col gap-2">
           {filtered.map((product) => {
             const level = getStockLevel(product)
@@ -479,46 +350,6 @@ export function InventoryManager() {
                     >
                       {getStockLabel(level)}
                     </Badge>
-                    {isAdmin && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                          onClick={() => setEditingProduct({ ...product })}
-                        >
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent className="bg-card text-foreground">
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Eliminar Producto</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Se desactivara &quot;{product.name}&quot; del inventario. Esta accion se puede revertir.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel className="bg-secondary text-secondary-foreground">Cancelar</AlertDialogCancel>
-                              <AlertDialogAction
-                                className="bg-destructive text-destructive-foreground"
-                                onClick={() => handleDeleteProduct(product)}
-                              >
-                                Eliminar
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </>
-                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -532,17 +363,27 @@ export function InventoryManager() {
             </Card>
           )}
         </div>
-      ) : (
+      )}
+
+      {!loading && viewMode === "chart" && (
         <Card className="border-border bg-card">
           <CardHeader>
-            <CardTitle className="text-sm font-medium text-foreground">Stock por Producto</CardTitle>
+            <CardTitle className="text-sm font-medium text-foreground">
+              Stock por Producto
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 20 }}>
                   <XAxis type="number" stroke="oklch(0.6 0 0)" fontSize={12} />
-                  <YAxis type="category" dataKey="name" width={120} stroke="oklch(0.6 0 0)" fontSize={11} />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    width={120}
+                    stroke="oklch(0.6 0 0)"
+                    fontSize={11}
+                  />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "oklch(0.17 0.005 250)",
@@ -563,73 +404,6 @@ export function InventoryManager() {
           </CardContent>
         </Card>
       )}
-
-      {/* Edit Product Dialog */}
-      <Dialog open={!!editingProduct} onOpenChange={() => setEditingProduct(null)}>
-        <DialogContent className="bg-card text-foreground">
-          <DialogHeader>
-            <DialogTitle className="text-foreground">Editar Producto</DialogTitle>
-          </DialogHeader>
-          {editingProduct && (
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <Label className="text-foreground">Nombre</Label>
-                <Input
-                  value={editingProduct.name}
-                  onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
-                  className="bg-secondary text-foreground"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-2">
-                  <Label className="text-foreground">Categoria</Label>
-                  <Input
-                    value={editingProduct.category}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, category: e.target.value })}
-                    className="bg-secondary text-foreground"
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label className="text-foreground">Precio (COP)</Label>
-                  <Input
-                    type="number"
-                    value={editingProduct.price}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, price: parseFloat(e.target.value) || 0 })}
-                    className="bg-secondary text-foreground"
-                    min="1"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="flex flex-col gap-2">
-                  <Label className="text-foreground">Unidad</Label>
-                  <Input
-                    value={editingProduct.unit}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, unit: e.target.value })}
-                    className="bg-secondary text-foreground"
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label className="text-foreground">Stock Minimo</Label>
-                  <Input
-                    type="number"
-                    value={editingProduct.min_stock}
-                    onChange={(e) => setEditingProduct({ ...editingProduct, min_stock: parseInt(e.target.value) || 0 })}
-                    className="bg-secondary text-foreground"
-                    min="0"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setEditingProduct(null)}>Cancelar</Button>
-            <Button className="bg-primary text-primary-foreground" onClick={handleEditProduct}>
-              Guardar Cambios
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

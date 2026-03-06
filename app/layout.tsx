@@ -4,16 +4,25 @@ import { Toaster } from "@/components/ui/sonner"
 import { AuthProvider } from "@/lib/auth-context"
 import "./globals.css"
 
-const _geist = Geist({ subsets: ["latin"] })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
+const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" })
+const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" })
 
 export const metadata: Metadata = {
-  title: "RestaurantOS - Panel Administrativo",
-  description: "Sistema de gestion de productos y pedidos para restaurante",
+  title: {
+    default: "RestaurantOS",
+    template: "%s | RestaurantOS",
+  },
+  description: "Sistema integral de gestión para restaurantes",
+  icons: {
+    icon: "/favicon.ico",
+  },
 }
 
 export const viewport: Viewport = {
-  themeColor: "#1a1a2e",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f8f4f0" },
+    { media: "(prefers-color-scheme: dark)", color: "#1a1a2e" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -22,16 +31,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es">
+    <html lang="es" className={`${geist.variable} ${geistMono.variable}`}>
       <body className="font-sans antialiased">
         <AuthProvider>
           {children}
         </AuthProvider>
-        <Toaster position="top-right" />
+        <Toaster position="top-right" richColors closeButton />
       </body>
     </html>
   )

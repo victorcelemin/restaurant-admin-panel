@@ -9,17 +9,15 @@ import { useAuth } from "@/lib/auth-context"
 
 export function ActiveEmployees() {
   const { isAdmin } = useAuth()
-  const { data: usersList } = useApi(() => {
+  const { data: usersList, loading } = useApi(() => {
     if (isAdmin) return usersApi.list()
     return Promise.resolve([])
   }, [isAdmin])
 
+  if (!isAdmin) return null
+
   const activeUsers = (usersList ?? []).filter((u) => u.active)
   const total = (usersList ?? []).length
-
-  if (!isAdmin) {
-    return null
-  }
 
   return (
     <Card className="border-border bg-card">
@@ -33,7 +31,14 @@ export function ActiveEmployees() {
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
-        {activeUsers.map((emp) => (
+        {loading && (
+          <div className="flex flex-col gap-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-12 animate-pulse rounded-lg bg-secondary" />
+            ))}
+          </div>
+        )}
+        {!loading && activeUsers.map((emp) => (
           <div
             key={emp.id}
             className="flex items-center gap-3 rounded-lg border border-border px-3 py-2"

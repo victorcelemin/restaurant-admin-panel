@@ -18,7 +18,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (user) router.replace("/")
+    if (user) router.replace("/admin")
   }, [user, router])
 
   if (user) return null
@@ -33,7 +33,8 @@ export default function LoginPage() {
     try {
       await login(username, password)
       toast.success("Bienvenido a RestaurantOS")
-      router.push("/")
+      const from = new URLSearchParams(window.location.search).get("from")
+      router.push(from && from.startsWith("/admin") ? from : "/admin")
     } catch (err: any) {
       toast.error(err.message || "Error al iniciar sesion")
     } finally {
