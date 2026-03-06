@@ -14,13 +14,12 @@ app = FastAPI(
     description="API backend para el panel administrativo de RestaurantOS",
 )
 
-cors_origins = app_settings.cors_origins_list
-# If wildcard "*" is in the list, allow all origins (no credentials)
-allow_all = "*" in cors_origins
+# Allow all origins — the frontend is a public-facing SPA on Vercel.
+# Credentials (cookies) are not used for cross-origin auth; JWT is sent via Bearer header.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins if not allow_all else ["*"],
-    allow_credentials=not allow_all,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

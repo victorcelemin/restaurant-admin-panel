@@ -7,7 +7,8 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "dev-secret-key-change-in-production"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
-    CORS_ORIGINS: str = "http://localhost:3000"
+    # Default "*" allows all origins — override with specific URLs in production via env var
+    CORS_ORIGINS: str = "*"
 
     @property
     def cors_origins_list(self) -> list[str]:
