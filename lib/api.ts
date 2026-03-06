@@ -1,4 +1,7 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+// In production (Vercel), NEXT_PUBLIC_API_URL is empty so all /api/* calls go through
+// the Next.js rewrite proxy → Railway backend (no CORS issues).
+// In local dev, calls go to localhost:8000 directly.
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" && window.location.hostname !== "localhost" ? "" : "http://localhost:8000")
 
 class ApiError extends Error {
   status: number

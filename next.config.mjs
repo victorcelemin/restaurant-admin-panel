@@ -1,11 +1,20 @@
 /** @type {import('next').NextConfig} */
+const BACKEND_URL = process.env.BACKEND_URL || "https://backend-production-7916.up.railway.app"
+
 const nextConfig = {
-  // Remove 'standalone' for Vercel — it handles builds natively
   typescript: {
     ignoreBuildErrors: false,
   },
   images: {
     unoptimized: true,
+  },
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${BACKEND_URL}/api/:path*`,
+      },
+    ]
   },
 }
 
