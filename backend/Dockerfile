@@ -13,4 +13,5 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["python", "-c", "import os,uvicorn; uvicorn.run('main:app', host='0.0.0.0', port=int(os.environ.get('PORT', 8000)))"]
+# CORS is now open (allow_origins=["*"]) — see main.py
+CMD ["python", "-c", "import os,uvicorn; uvicorn.run('main:app', host='0.0.0.0', port=int(os.environ.get('PORT', 8000)), log_level='info')"]
