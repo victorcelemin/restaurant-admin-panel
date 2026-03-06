@@ -39,7 +39,7 @@ function CheckoutForm({ items, total }: { items: CartItem[]; total: number }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" && window.location.hostname !== "localhost" ? "" : "http://localhost:8000")
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ""
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

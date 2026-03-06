@@ -1,12 +1,7 @@
 {
   "build": {
     "env": {
-      "BACKEND_URL": "https://backend-production-7916.up.railway.app",
-      "NEXT_PUBLIC_API_URL": ""
+      "BACKEND_URL": "https://backend-production-7916.up.railway.app"
     }
-  },
-  "env": {
-    "BACKEND_URL": "https://backend-production-7916.up.railway.app",
-    "NEXT_PUBLIC_API_URL": ""
   }
 }
