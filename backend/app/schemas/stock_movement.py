@@ -4,7 +4,7 @@ from datetime import datetime
 
 class StockMovementCreate(BaseModel):
     product_id: int
-    type: str = Field(..., pattern="^(entrada|merma)$")
+    type: str = Field(..., pattern="^(entrada|merma|venta)$")
     quantity: int = Field(..., gt=0)
     notes: str = Field(default="", max_length=500)
 

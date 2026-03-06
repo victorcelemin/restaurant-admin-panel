@@ -86,7 +86,7 @@ export function InventoryManager() {
   const [mermaQty, setMermaQty] = useState("")
   const [mermaNotes, setMermaNotes] = useState("")
 
-  const { data: productsList, loading } = useApi(() => productsApi.list(), [])
+  const { data: productsList, loading } = useApi(() => productsApi.list({ active_only: false }), [])
 
   const filtered = (productsList ?? []).filter(
     (p) =>
@@ -344,6 +344,11 @@ export function InventoryManager() {
                       <span className="text-lg font-bold text-foreground">{product.stock}</span>
                       <span className="ml-1 text-xs text-muted-foreground">{product.unit}</span>
                     </div>
+                    {!product.active && (
+                      <Badge variant="secondary" className="text-xs font-medium bg-muted text-muted-foreground">
+                        Inactivo
+                      </Badge>
+                    )}
                     <Badge
                       variant="secondary"
                       className={`text-xs font-medium ${getStockBgColor(level)}`}

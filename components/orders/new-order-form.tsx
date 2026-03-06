@@ -68,6 +68,10 @@ export function NewOrderForm() {
     if (product.stock === 0) return
     const existing = items.find((i) => i.product.id === product.id)
     if (existing) {
+      if (existing.quantity >= product.stock) {
+        toast.error(`Solo hay ${product.stock} disponibles de "${product.name}"`)
+        return
+      }
       setItems(
         items.map((i) =>
           i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
@@ -89,7 +93,14 @@ export function NewOrderForm() {
   function updateQuantity(localId: string, delta: number) {
     setItems(
       items
-        .map((i) => (i.localId === localId ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i))
+        .map((i) => {
+          if (i.localId !== localId) return i
+          const newQty = Math.max(0, Math.min(i.quantity + delta, i.product.stock))
+          if (delta > 0 && newQty === i.quantity) {
+            toast.error(`Stock maximo alcanzado (${i.product.stock})`)
+          }
+          return { ...i, quantity: newQty }
+        })
         .filter((i) => i.quantity > 0)
     )
   }

@@ -8,6 +8,7 @@ from app.database import get_db
 from app.models.invoice import Invoice
 from app.models.order import Order, OrderItem
 from app.models.product import Product
+from app.models.stock_movement import StockMovement
 from app.models.user import User
 from app.schemas.order import OrderOut, OrderCreate, OrderStatusUpdate, PublicOrderCreate
 from app.security import get_current_user, require_role
@@ -80,6 +81,13 @@ def create_order(
 
     for product, qty in stock_changes:
         product.stock -= qty
+        db.add(StockMovement(
+            product_id=product.id,
+            type="venta",
+            quantity=qty,
+            notes=f"Venta via pedido admin - {data.client_name}",
+            created_by=current_user.id,
+        ))
 
     order = Order(
         order_number=_next_order_number(db),
@@ -137,6 +145,13 @@ def create_public_order(data: PublicOrderCreate, db: Session = Depends(get_db)):
 
     for product, qty in stock_changes:
         product.stock -= qty
+        db.add(StockMovement(
+            product_id=product.id,
+            type="venta",
+            quantity=qty,
+            notes=f"Venta online - {data.client_name}" + (f" Mesa {data.table_number}" if data.table_number else ""),
+            created_by=system_user.id,
+        ))
 
     notes = data.notes
     if data.table_number:
