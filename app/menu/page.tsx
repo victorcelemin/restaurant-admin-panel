@@ -29,7 +29,7 @@ import {
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { useApi } from "@/hooks/use-api"
-import { products as productsApi, type Product } from "@/lib/api"
+import { fetchMenuProducts, type Product } from "@/lib/api"
 
 interface CartItem {
   product: Product
@@ -69,7 +69,7 @@ export default function MenuPage() {
   const [cartOpen, setCartOpen] = useState(false)
 
   const { data: productsList, loading, error } = useApi(
-    () => productsApi.list({ active_only: true }),
+    () => fetchMenuProducts({ active_only: true }),
     []
   )
 

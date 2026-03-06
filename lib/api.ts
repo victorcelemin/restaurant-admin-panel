@@ -96,6 +96,20 @@ export interface Product {
   created_at: string
 }
 
+// Public menu products — goes through a Next.js route handler that handles auth internally
+export async function fetchMenuProducts(params?: { active_only?: boolean; category?: string; search?: string }): Promise<Product[]> {
+  const qs = new URLSearchParams()
+  if (params?.active_only !== undefined) qs.set("active_only", String(params.active_only))
+  if (params?.category) qs.set("category", params.category)
+  if (params?.search) qs.set("search", params.search)
+  const res = await fetch(`/api/menu/products?${qs}`)
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error || `Error ${res.status}`)
+  }
+  return res.json()
+}
+
 export const products = {
   list: (params?: { active_only?: boolean; category?: string; search?: string }) => {
     const qs = new URLSearchParams()

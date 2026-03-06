@@ -9,12 +9,16 @@ const nextConfig = {
     unoptimized: true,
   },
   async rewrites() {
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${BACKEND_URL}/api/:path*`,
-      },
-    ]
+    return {
+      // afterFiles rewrites run AFTER route handlers — so /api/menu/* is handled by
+      // the Next.js route handler first; everything else proxies to Railway.
+      afterFiles: [
+        {
+          source: "/api/:path*",
+          destination: `${BACKEND_URL}/api/:path*`,
+        },
+      ],
+    }
   },
 }
 
