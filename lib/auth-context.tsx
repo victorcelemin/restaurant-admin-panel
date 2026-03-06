@@ -49,12 +49,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(u)
           localStorage.setItem("user", JSON.stringify(u))
         })
-        .catch(() => {
-          localStorage.removeItem("token")
-          localStorage.removeItem("user")
-          deleteCookie("auth_token")
-          setToken(null)
-          setUser(null)
+        .catch((err) => {
+          // Only clear session on 401 (invalid token), not on network errors
+          const status = err?.status ?? err?.response?.status
+          if (status === 401) {
+            localStorage.removeItem("token")
+            localStorage.removeItem("user")
+            deleteCookie("auth_token")
+            setToken(null)
+            setUser(null)
+          }
+          // On network error / 5xx: keep the cached user session
         })
         .finally(() => setLoading(false))
     } else {

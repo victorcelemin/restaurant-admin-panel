@@ -20,9 +20,11 @@ import {
   ShoppingCart,
   Trash2,
   ArrowRight,
-  Star,
+  Sparkles,
   Clock,
   MapPin,
+  Flame,
+  Star,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -66,7 +68,7 @@ export default function MenuPage() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [cartOpen, setCartOpen] = useState(false)
 
-  const { data: productsList, loading } = useApi(
+  const { data: productsList, loading, error } = useApi(
     () => productsApi.list({ active_only: true }),
     []
   )
@@ -101,7 +103,7 @@ export default function MenuPage() {
       }
       return [...prev, { product, quantity: 1 }]
     })
-    toast.success(`${product.name} agregado al carrito`)
+    toast.success(`${product.name} agregado`)
   }
 
   function updateQty(id: number, delta: number) {
@@ -127,94 +129,145 @@ export default function MenuPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Header */}
-      <header className="relative overflow-hidden bg-primary text-primary-foreground">
-        <div className="absolute inset-0 opacity-10"
-          style={{ backgroundImage: "radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)", backgroundSize: "40px 40px" }}
+
+      {/* ── HERO HEADER ── */}
+      <header className="relative overflow-hidden">
+        {/* Background layers */}
+        <div className="absolute inset-0 gradient-hero" />
+        <div className="absolute inset-0"
+          style={{
+            backgroundImage:
+              "radial-gradient(ellipse at 20% 50%, oklch(0.72 0.28 12 / 0.18) 0%, transparent 60%), " +
+              "radial-gradient(ellipse at 80% 20%, oklch(0.65 0.22 280 / 0.15) 0%, transparent 55%)",
+          }}
         />
-        <div className="relative mx-auto max-w-6xl px-4 py-10 md:py-14">
+        {/* Dot grid */}
+        <div className="absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage: "radial-gradient(circle, oklch(0.97 0 0) 1px, transparent 1px)",
+            backgroundSize: "28px 28px",
+          }}
+        />
+
+        <div className="relative mx-auto max-w-6xl px-4 py-10 md:py-16">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-foreground/20 backdrop-blur-sm">
+            {/* Brand */}
+            <div className="flex items-center gap-4">
+              <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-primary glow-primary">
                 <ChefHat className="h-7 w-7 text-primary-foreground" />
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-success text-[8px] font-bold text-success-foreground">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-60" />
+                  <span className="relative">✓</span>
+                </span>
               </div>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">RestaurantOS</h1>
-                <p className="flex items-center gap-1.5 text-xs text-primary-foreground/75">
-                  <MapPin className="h-3 w-3" />
+                <h1 className="text-2xl font-black tracking-tight text-foreground">
+                  Restaurant<span className="text-gradient">OS</span>
+                </h1>
+                <p className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                  <MapPin className="h-3 w-3 text-primary" />
                   Medellín, Colombia
-                  <span className="mx-1">·</span>
-                  <Clock className="h-3 w-3" />
-                  Lun–Dom 11:00–22:00
+                  <span className="text-border">·</span>
+                  <Clock className="h-3 w-3 text-primary" />
+                  11:00 – 22:00
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {/* Cart button */}
-              <button
-                onClick={() => cart.length > 0 && setCartOpen(true)}
-                className={cn(
-                  "relative flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all",
-                  cartCount > 0
-                    ? "bg-primary-foreground text-primary shadow-lg hover:bg-primary-foreground/90 active:scale-95"
-                    : "bg-primary-foreground/15 text-primary-foreground/70 cursor-default"
-                )}
-              >
-                <ShoppingCart className="h-4 w-4" />
-                <span className="hidden sm:inline">Carrito</span>
-                {cartCount > 0 && (
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                    {cartCount}
-                  </span>
-                )}
-              </button>
 
-            </div>
+            {/* Cart button */}
+            <button
+              onClick={() => cartCount > 0 && setCartOpen(true)}
+              className={cn(
+                "relative flex items-center gap-2.5 rounded-2xl px-5 py-3 text-sm font-bold transition-all duration-200",
+                cartCount > 0
+                  ? "bg-primary text-primary-foreground glow-sm hover:scale-105 active:scale-95"
+                  : "bg-muted text-muted-foreground cursor-default"
+              )}
+            >
+              <ShoppingCart className="h-4 w-4" />
+              <span className="hidden sm:inline">Mi Pedido</span>
+              {cartCount > 0 && (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-foreground text-[10px] font-black text-primary">
+                  {cartCount}
+                </span>
+              )}
+            </button>
           </div>
 
-          <div className="mt-8">
-            <h2 className="text-3xl font-bold md:text-4xl">Nuestro Menú</h2>
-            <p className="mt-1 text-primary-foreground/75">
-              <Star className="mr-1 inline h-3.5 w-3.5 fill-current" />
-              Preparado con los mejores ingredientes del día
+          {/* Hero text */}
+          <div className="mt-10 max-w-xl">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/15 border border-primary/25 px-3 py-1 text-xs font-semibold text-primary">
+              <Flame className="h-3 w-3" />
+              Menú del día disponible
+            </div>
+            <h2 className="text-4xl font-black leading-tight text-foreground md:text-5xl">
+              Hecho con
+              <br />
+              <span className="text-gradient">pasión & sabor</span>
+            </h2>
+            <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+              <Star className="h-3.5 w-3.5 fill-warning text-warning" />
+              Ingredientes frescos · Preparación al momento · Directo a tu mesa
             </p>
+          </div>
+
+          {/* Stats row */}
+          <div className="mt-8 flex flex-wrap gap-4">
+            {[
+              { label: "Platos disponibles", value: String(productsList?.length ?? "–") },
+              { label: "Categorías", value: String(categories.length || "–") },
+              { label: "Tiempo promedio", value: "15–25 min" },
+            ].map((stat) => (
+              <div key={stat.label} className="flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-3 py-2">
+                <span className="text-lg font-black text-primary">{stat.value}</span>
+                <span className="text-xs text-muted-foreground">{stat.label}</span>
+              </div>
+            ))}
           </div>
         </div>
       </header>
 
-      {/* Sticky search + filters */}
-      <div className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md shadow-sm">
+      {/* ── STICKY SEARCH + FILTERS ── */}
+      <div className="sticky top-0 z-30 border-b border-border bg-background/80 backdrop-blur-xl shadow-lg shadow-background/50">
         <div className="mx-auto max-w-6xl px-4 py-3">
           <div className="relative mb-3">
-            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Buscar en el menú..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-11 pl-10 bg-muted border-0 text-foreground placeholder:text-muted-foreground focus-visible:ring-primary"
+              className="h-12 pl-11 bg-card border-border text-foreground placeholder:text-muted-foreground rounded-2xl focus-visible:ring-primary focus-visible:border-primary/50"
             />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ✕
+              </button>
+            )}
           </div>
           <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
             <button
               onClick={() => setActiveCategory("all")}
               className={cn(
-                "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-all",
+                "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all duration-150",
                 activeCategory === "all"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  ? "bg-primary text-primary-foreground glow-sm shadow-lg"
+                  : "bg-card border border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
               )}
             >
-              🍽️ Todo
+              <Sparkles className="h-3.5 w-3.5" /> Todo
             </button>
             {categories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
                 className={cn(
-                  "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-all",
+                  "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all duration-150",
                   activeCategory === cat
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-muted text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    ? "bg-primary text-primary-foreground glow-sm shadow-lg"
+                    : "bg-card border border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
                 )}
               >
                 {getCategoryIcon(cat)} {cat}
@@ -224,35 +277,54 @@ export default function MenuPage() {
         </div>
       </div>
 
-      {/* Products grid */}
+      {/* ── PRODUCTS GRID ── */}
       <main className="mx-auto max-w-6xl px-4 py-8">
         {loading ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-48 animate-pulse rounded-2xl bg-muted" />
+              <div key={i} className="h-52 animate-pulse rounded-3xl bg-card border border-border" />
             ))}
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center gap-4 py-24 text-center">
+            <span className="text-6xl">⚠️</span>
+            <p className="text-lg font-bold text-foreground">Error cargando el menú</p>
+            <p className="text-sm text-muted-foreground max-w-xs">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90"
+            >
+              Reintentar
+            </button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-24 text-center">
             <span className="text-6xl">🔍</span>
-            <p className="text-lg font-medium text-foreground">No encontramos ese producto</p>
-            <p className="text-sm text-muted-foreground">Intenta con otra búsqueda</p>
+            <p className="text-lg font-bold text-foreground">Sin resultados</p>
+            <p className="text-sm text-muted-foreground">Prueba con otra búsqueda o categoría</p>
+            <button onClick={() => { setSearch(""); setActiveCategory("all") }} className="mt-2 text-sm text-primary hover:underline">
+              Ver todo el menú
+            </button>
           </div>
         ) : (
           <>
-            {/* Group by category */}
             {(activeCategory === "all" ? categories : [activeCategory]).map((cat) => {
               const items = filtered.filter((p) => p.category === cat)
               if (items.length === 0) return null
               return (
-                <section key={cat} className="mb-10">
-                  <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-foreground">
-                    <span className="text-2xl">{getCategoryIcon(cat)}</span>
-                    {cat}
-                    <Badge variant="secondary" className="ml-1 text-xs">
-                      {items.length}
-                    </Badge>
-                  </h3>
+                <section key={cat} className="mb-12">
+                  {/* Category header */}
+                  <div className="mb-5 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/15 border border-primary/25 text-xl">
+                      {getCategoryIcon(cat)}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-black text-foreground capitalize">{cat}</h3>
+                      <p className="text-xs text-muted-foreground">{items.length} opciones disponibles</p>
+                    </div>
+                    <div className="ml-auto h-px flex-1 bg-gradient-to-r from-border to-transparent" />
+                  </div>
+
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {items.map((product) => {
                       const inCart = cart.find((i) => i.product.id === product.id)
@@ -260,42 +332,58 @@ export default function MenuPage() {
                         <div
                           key={product.id}
                           className={cn(
-                            "group relative flex flex-col overflow-hidden rounded-2xl border bg-card shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5",
-                            inCart ? "border-primary/40 ring-1 ring-primary/20" : "border-border"
+                            "group relative flex flex-col overflow-hidden rounded-3xl border transition-all duration-300 hover:-translate-y-1",
+                            inCart
+                              ? "border-primary/50 bg-card shadow-lg shadow-primary/10 ring-1 ring-primary/20"
+                              : "border-border bg-card hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5"
                           )}
                         >
-                          {/* Color top bar */}
-                          <div className="h-1.5 w-full bg-gradient-to-r from-primary to-primary/60" />
+                          {/* Top accent bar */}
+                          <div className={cn(
+                            "h-1 w-full transition-all duration-300",
+                            inCart
+                              ? "bg-primary"
+                              : "bg-gradient-to-r from-primary/30 to-transparent group-hover:from-primary/60"
+                          )} />
 
-                          <div className="flex flex-1 flex-col gap-3 p-5">
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1">
-                                <p className="font-semibold leading-snug text-foreground">{product.name}</p>
-                                <p className="mt-0.5 text-xs text-muted-foreground">{product.category}</p>
+                          <div className="flex flex-1 flex-col gap-4 p-5">
+                            {/* Icon + name row */}
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 border border-primary/15 text-2xl">
+                                {getCategoryIcon(product.category)}
                               </div>
-                              <span className="text-2xl">{getCategoryIcon(product.category)}</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold leading-snug text-foreground">{product.name}</p>
+                                <p className="mt-0.5 text-xs text-muted-foreground capitalize">{product.category}</p>
+                              </div>
+                              {product.stock <= 3 && product.stock > 0 && (
+                                <Badge className="shrink-0 bg-warning/20 text-warning-foreground border border-warning/30 text-[10px]">
+                                  ¡Últimos!
+                                </Badge>
+                              )}
                             </div>
 
-                            <div className="flex items-end justify-between">
+                            {/* Price + action row */}
+                            <div className="flex items-end justify-between mt-auto">
                               <div>
-                                <p className="text-xl font-bold text-primary">{formatCOP(product.price)}</p>
-                                <p className="text-xs text-muted-foreground">{product.unit}</p>
+                                <p className="text-2xl font-black text-primary leading-none">{formatCOP(product.price)}</p>
+                                <p className="mt-1 text-xs text-muted-foreground">{product.unit}</p>
                               </div>
 
                               {inCart ? (
-                                <div className="flex items-center gap-1 overflow-hidden rounded-xl border border-border bg-muted">
+                                <div className="flex items-center gap-0.5 overflow-hidden rounded-2xl border border-border bg-muted/60">
                                   <button
                                     onClick={() => updateQty(product.id, -1)}
-                                    className="flex h-9 w-9 items-center justify-center text-foreground hover:bg-accent transition-colors"
+                                    className="flex h-10 w-10 items-center justify-center text-foreground hover:bg-destructive/15 hover:text-destructive transition-colors"
                                   >
                                     <Minus className="h-3.5 w-3.5" />
                                   </button>
-                                  <span className="w-7 text-center text-sm font-bold text-foreground">
+                                  <span className="w-8 text-center text-sm font-black text-foreground">
                                     {inCart.quantity}
                                   </span>
                                   <button
                                     onClick={() => addToCart(product)}
-                                    className="flex h-9 w-9 items-center justify-center text-foreground hover:bg-accent transition-colors"
+                                    className="flex h-10 w-10 items-center justify-center text-foreground hover:bg-primary/15 hover:text-primary transition-colors"
                                   >
                                     <Plus className="h-3.5 w-3.5" />
                                   </button>
@@ -303,7 +391,7 @@ export default function MenuPage() {
                               ) : (
                                 <button
                                   onClick={() => addToCart(product)}
-                                  className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 active:scale-95 transition-all"
+                                  className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground glow-sm hover:scale-110 active:scale-95 transition-all duration-150 shadow-lg"
                                 >
                                   <Plus className="h-5 w-5" />
                                 </button>
@@ -311,8 +399,9 @@ export default function MenuPage() {
                             </div>
                           </div>
 
+                          {/* In-cart indicator */}
                           {inCart && (
-                            <div className="absolute top-3 right-3 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow">
+                            <div className="absolute top-4 right-4 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[10px] font-black text-primary-foreground shadow-md">
                               {inCart.quantity}
                             </div>
                           )}
@@ -327,71 +416,79 @@ export default function MenuPage() {
         )}
       </main>
 
-      {/* Floating cart bar (mobile) */}
+      {/* ── FLOATING CART BAR (mobile) ── */}
       {cartCount > 0 && !cartOpen && (
         <div className="fixed inset-x-4 bottom-6 z-40 md:hidden">
           <button
             onClick={() => setCartOpen(true)}
-            className="flex w-full items-center justify-between rounded-2xl bg-primary px-5 py-4 shadow-xl active:scale-[0.98] transition-transform"
-            style={{ boxShadow: "0 8px 32px oklch(from var(--primary) l c h / 0.40)" }}
+            className="flex w-full items-center justify-between rounded-3xl bg-primary px-5 py-4 shadow-2xl active:scale-[0.97] transition-transform glow-primary"
           >
             <div className="flex items-center gap-3">
-              <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-primary-foreground/20">
-                <ShoppingCart className="h-4.5 w-4.5 text-primary-foreground" />
-                <span className="absolute -right-1.5 -top-1.5 flex h-4.5 w-4.5 items-center justify-center rounded-full bg-primary-foreground text-[10px] font-bold text-primary">
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-foreground/20">
+                <ShoppingCart className="h-5 w-5 text-primary-foreground" />
+                <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary-foreground text-[10px] font-black text-primary">
                   {cartCount}
                 </span>
               </div>
-              <span className="text-sm font-semibold text-primary-foreground">Ver carrito</span>
+              <span className="text-sm font-bold text-primary-foreground">Ver mi pedido</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-base font-bold text-primary-foreground">{formatCOP(cartTotal)}</span>
+              <span className="text-base font-black text-primary-foreground">{formatCOP(cartTotal)}</span>
               <ArrowRight className="h-4 w-4 text-primary-foreground" />
             </div>
           </button>
         </div>
       )}
 
-      {/* Cart Sheet */}
+      {/* ── CART SHEET ── */}
       <Sheet open={cartOpen} onOpenChange={setCartOpen}>
-        <SheetContent className="flex w-full flex-col bg-card sm:max-w-md" side="right">
+        <SheetContent className="flex w-full flex-col bg-card border-border sm:max-w-md" side="right">
           <SheetHeader className="pb-4">
-            <SheetTitle className="flex items-center gap-2 text-foreground">
-              <ShoppingCart className="h-5 w-5 text-primary" />
-              Tu Pedido
-              <Badge className="ml-auto bg-primary text-primary-foreground">
-                {cartCount} item{cartCount !== 1 ? "s" : ""}
-              </Badge>
+            <SheetTitle className="flex items-center gap-2 text-foreground text-lg font-black">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary">
+                <ShoppingCart className="h-4 w-4 text-primary-foreground" />
+              </div>
+              Mi Pedido
+              {cartCount > 0 && (
+                <Badge className="ml-auto bg-primary/20 text-primary border border-primary/30 font-bold">
+                  {cartCount} {cartCount === 1 ? "item" : "items"}
+                </Badge>
+              )}
             </SheetTitle>
           </SheetHeader>
 
           {cart.length === 0 ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-              <span className="text-5xl">🛒</span>
-              <p className="text-sm text-muted-foreground">Tu carrito está vacío</p>
+            <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+              <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-muted border border-border text-4xl">
+                🛒
+              </div>
+              <div>
+                <p className="font-bold text-foreground">Tu pedido está vacío</p>
+                <p className="text-sm text-muted-foreground mt-1">Agrega productos del menú</p>
+              </div>
             </div>
           ) : (
             <>
               <div className="flex-1 overflow-y-auto">
                 <div className="flex flex-col gap-3 pb-4">
                   {cart.map(({ product, quantity }) => (
-                    <div key={product.id} className="flex items-center gap-3 rounded-xl border border-border bg-background p-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-xl">
+                    <div key={product.id} className="flex items-center gap-3 rounded-2xl border border-border bg-background p-3 transition-all hover:border-primary/30">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 border border-primary/15 text-xl">
                         {getCategoryIcon(product.category)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-foreground">{product.name}</p>
-                        <p className="text-xs text-primary font-semibold">{formatCOP(product.price)}</p>
+                        <p className="truncate text-sm font-bold text-foreground">{product.name}</p>
+                        <p className="text-xs font-bold text-primary">{formatCOP(product.price * quantity)}</p>
                       </div>
                       <div className="flex items-center gap-1">
-                        <button onClick={() => updateQty(product.id, -1)} className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted hover:bg-accent transition-colors">
+                        <button onClick={() => updateQty(product.id, -1)} className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted hover:bg-destructive/15 hover:text-destructive transition-colors">
                           <Minus className="h-3 w-3" />
                         </button>
-                        <span className="w-6 text-center text-sm font-bold">{quantity}</span>
-                        <button onClick={() => updateQty(product.id, 1)} className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted hover:bg-accent transition-colors">
+                        <span className="w-7 text-center text-sm font-black text-foreground">{quantity}</span>
+                        <button onClick={() => updateQty(product.id, 1)} className="flex h-8 w-8 items-center justify-center rounded-xl bg-muted hover:bg-primary/15 hover:text-primary transition-colors">
                           <Plus className="h-3 w-3" />
                         </button>
-                        <button onClick={() => removeFromCart(product.id)} className="ml-1 flex h-7 w-7 items-center justify-center rounded-lg text-destructive hover:bg-destructive/10 transition-colors">
+                        <button onClick={() => removeFromCart(product.id)} className="ml-1 flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:bg-destructive/15 hover:text-destructive transition-colors">
                           <Trash2 className="h-3 w-3" />
                         </button>
                       </div>
@@ -400,20 +497,20 @@ export default function MenuPage() {
                 </div>
               </div>
 
-              <div className="border-t border-border pt-4">
-                <div className="mb-4 flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Subtotal</span>
-                  <span className="text-lg font-bold text-foreground">{formatCOP(cartTotal)}</span>
+              <div className="border-t border-border pt-4 space-y-3">
+                <div className="flex items-center justify-between rounded-2xl bg-muted/50 px-4 py-3">
+                  <span className="text-sm text-muted-foreground font-medium">Total</span>
+                  <span className="text-xl font-black text-foreground">{formatCOP(cartTotal)}</span>
                 </div>
                 <Button
-                  className="h-13 w-full bg-primary text-base font-semibold text-primary-foreground hover:bg-primary/90"
+                  className="h-13 w-full rounded-2xl bg-primary text-base font-black text-primary-foreground hover:bg-primary/90 glow-sm transition-all active:scale-[0.98]"
                   onClick={goToCheckout}
                 >
-                  Proceder al Pago
+                  Confirmar Pedido
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
-                <p className="mt-2 text-center text-xs text-muted-foreground">
-                  Pedido directo a cocina
+                <p className="text-center text-xs text-muted-foreground">
+                  Pago en caja al retirar · Directo a cocina
                 </p>
               </div>
             </>
