@@ -30,7 +30,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     if (typeof window !== "undefined") {
       localStorage.removeItem("token")
       localStorage.removeItem("user")
-      window.location.href = "/login"
+      // Solo redirigir a login si no estamos en rutas públicas
+      const publicPaths = ["/menu", "/pago", "/login"]
+      const isPublic = publicPaths.some((p) => window.location.pathname.startsWith(p))
+      if (!isPublic) {
+        window.location.href = "/login"
+      }
     }
     throw new ApiError("No autorizado", 401)
   }

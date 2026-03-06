@@ -16,8 +16,8 @@ def list_products(
     category: str | None = Query(None),
     search: str | None = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
 ):
+    """Endpoint público — no requiere autenticación (usado por el menú del restaurante)."""
     q = db.query(Product)
     if active_only:
         q = q.filter(Product.active == True)
@@ -29,7 +29,8 @@ def list_products(
 
 
 @router.get("/categories", response_model=list[str])
-def list_categories(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def list_categories(db: Session = Depends(get_db)):
+    """Endpoint público — no requiere autenticación."""
     rows = db.query(Product.category).filter(Product.active == True).distinct().order_by(Product.category).all()
     return [r[0] for r in rows]
 
