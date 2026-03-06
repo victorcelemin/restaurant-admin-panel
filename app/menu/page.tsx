@@ -23,7 +23,6 @@ import {
   Star,
   Clock,
   MapPin,
-  LogIn,
 } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
@@ -169,14 +168,7 @@ export default function MenuPage() {
                   </span>
                 )}
               </button>
-              {/* Admin link */}
-              <button
-                onClick={() => router.push("/login")}
-                className="flex items-center gap-1.5 rounded-xl bg-primary-foreground/10 px-3 py-2.5 text-xs text-primary-foreground/80 hover:bg-primary-foreground/20"
-              >
-                <LogIn className="h-3.5 w-3.5" />
-                Admin
-              </button>
+
             </div>
           </div>
 
@@ -421,7 +413,7 @@ export default function MenuPage() {
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
                 <p className="mt-2 text-center text-xs text-muted-foreground">
-                  Pago seguro con Stripe
+                  Pedido directo a cocina
                 </p>
               </div>
             </>

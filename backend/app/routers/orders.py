@@ -9,7 +9,7 @@ from app.models.invoice import Invoice
 from app.models.order import Order, OrderItem
 from app.models.product import Product
 from app.models.user import User
-from app.schemas.order import OrderOut, OrderCreate, OrderStatusUpdate
+from app.schemas.order import OrderOut, OrderCreate, OrderStatusUpdate, PublicOrderCreate
 from app.security import get_current_user, require_role
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
@@ -89,6 +89,67 @@ def create_order(
         total=total,
         status="pendiente",
         created_by=current_user.id,
+        items=order_items,
+    )
+    db.add(order)
+    try:
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Error al guardar el pedido. Intente de nuevo.")
+    db.refresh(order)
+    return OrderOut.model_validate(order)
+
+
+@router.post("/public", response_model=OrderOut, status_code=status.HTTP_201_CREATED)
+def create_public_order(data: PublicOrderCreate, db: Session = Depends(get_db)):
+    """
+    Public endpoint — no authentication required.
+    Used by the ecommerce menu to place orders directly to the kitchen.
+    Orders are attributed to the system admin user (id=1).
+    """
+    # Resolve system user (admin, id=1) as creator
+    system_user = db.query(User).filter(User.id == 1).first()
+    if not system_user:
+        raise HTTPException(status_code=503, detail="Sistema no inicializado correctamente")
+
+    total = 0.0
+    order_items = []
+    stock_changes: list[tuple[Product, int]] = []
+
+    for item_data in data.items:
+        product = db.query(Product).filter(Product.id == item_data.product_id, Product.active == True).first()
+        if not product:
+            raise HTTPException(status_code=400, detail=f"Producto ID {item_data.product_id} no encontrado o inactivo")
+        if product.stock < item_data.quantity:
+            raise HTTPException(status_code=400, detail=f"Stock insuficiente para '{product.name}' (disponible: {product.stock})")
+
+        line_total = product.price * item_data.quantity
+        total += line_total
+        order_items.append(OrderItem(
+            product_id=product.id,
+            product_name=product.name,
+            quantity=item_data.quantity,
+            unit_price=product.price,
+            notes=item_data.notes,
+        ))
+        stock_changes.append((product, item_data.quantity))
+
+    for product, qty in stock_changes:
+        product.stock -= qty
+
+    notes = data.notes
+    if data.table_number:
+        notes = f"Mesa {data.table_number}" + (f" — {data.notes}" if data.notes else "")
+
+    order = Order(
+        order_number=_next_order_number(db),
+        client_name=data.client_name,
+        payment_method="efectivo",
+        notes=notes,
+        total=total,
+        status="pendiente",
+        created_by=system_user.id,
         items=order_items,
     )
     db.add(order)

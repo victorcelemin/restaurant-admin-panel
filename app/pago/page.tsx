@@ -9,10 +9,10 @@ import { Separator } from "@/components/ui/separator"
 import {
   ChefHat,
   ArrowLeft,
-  CreditCard,
+  ClipboardList,
   Loader2,
-  ShieldCheck,
   AlertCircle,
+  Hash,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -34,16 +34,17 @@ function formatCOP(n: number) {
 function CheckoutForm({ items, total }: { items: CartItem[]; total: number }) {
   const router = useRouter()
   const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
+  const [table, setTable] = useState("")
+  const [notes, setNotes] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
-  async function handlePay(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!name.trim() || !email.trim()) {
-      toast.error("Por favor ingresa tu nombre y correo")
+    if (!name.trim()) {
+      toast.error("Por favor ingresa tu nombre")
       return
     }
 
@@ -51,29 +52,28 @@ function CheckoutForm({ items, total }: { items: CartItem[]; total: number }) {
     setError(null)
 
     try {
-      const res = await fetch(`${API_BASE}/api/payments/create-checkout-session`, {
+      const res = await fetch(`${API_BASE}/api/orders/public`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          client_name: name.trim(),
+          table_number: table.trim(),
+          notes: notes.trim(),
           items: items.map((i) => ({
-            name: i.name,
-            price: i.price,
+            product_id: i.id,
             quantity: i.qty,
+            notes: "",
           })),
-          customer_name: name,
-          customer_email: email,
-          success_url: `${window.location.origin}/pago/exitoso?session_id={CHECKOUT_SESSION_ID}`,
-          cancel_url: `${window.location.origin}/pago/cancelado`,
         }),
       })
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
-        throw new Error(body.detail || "Error al crear la sesion de pago")
+        throw new Error(body.detail || "Error al registrar el pedido")
       }
 
-      const { url } = await res.json()
-      window.location.href = url
+      const order = await res.json()
+      router.replace(`/pago/exitoso?order=${order.order_number}&total=${total}`)
     } catch (err: any) {
       setError(err.message || "Error inesperado. Intenta nuevamente.")
       setLoading(false)
@@ -90,7 +90,7 @@ function CheckoutForm({ items, total }: { items: CartItem[]; total: number }) {
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
-            Volver al menu
+            Volver al menú
           </button>
           <div className="ml-auto flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
@@ -103,9 +103,9 @@ function CheckoutForm({ items, total }: { items: CartItem[]; total: number }) {
 
       <main className="mx-auto max-w-4xl px-4 py-8">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">Finalizar Pedido</h1>
+          <h1 className="text-2xl font-bold text-foreground">Confirmar Pedido</h1>
           <p className="text-sm text-muted-foreground">
-            Revisa tu pedido y completa el pago de forma segura
+            Tu pedido va directo a cocina — pago en caja al retirar
           </p>
         </div>
 
@@ -113,12 +113,14 @@ function CheckoutForm({ items, total }: { items: CartItem[]; total: number }) {
           {/* Form */}
           <div className="rounded-2xl border border-border bg-card p-6">
             <h2 className="mb-4 text-base font-semibold text-foreground">Tus datos</h2>
-            <form onSubmit={handlePay} className="flex flex-col gap-4">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="name" className="text-foreground">Nombre completo</Label>
+                <Label htmlFor="name" className="text-foreground">
+                  Nombre <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="name"
-                  placeholder="Ana Garcia"
+                  placeholder="Ana García"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="bg-background"
@@ -126,21 +128,35 @@ function CheckoutForm({ items, total }: { items: CartItem[]; total: number }) {
                   required
                 />
               </div>
+
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="email" className="text-foreground">Correo electronico</Label>
+                <Label htmlFor="table" className="text-foreground">
+                  Número de mesa <span className="text-muted-foreground text-xs">(opcional)</span>
+                </Label>
+                <div className="relative">
+                  <Hash className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="table"
+                    placeholder="5"
+                    value={table}
+                    onChange={(e) => setTable(e.target.value)}
+                    className="bg-background pl-9"
+                    inputMode="numeric"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="notes" className="text-foreground">
+                  Notas <span className="text-muted-foreground text-xs">(alergias, peticiones especiales…)</span>
+                </Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="ana@ejemplo.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="notes"
+                  placeholder="Sin cebolla, extra salsa…"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
                   className="bg-background"
-                  autoComplete="email"
-                  required
                 />
-                <p className="text-xs text-muted-foreground">
-                  Recibirás la confirmación en este correo
-                </p>
               </div>
 
               {error && (
@@ -152,11 +168,9 @@ function CheckoutForm({ items, total }: { items: CartItem[]; total: number }) {
 
               <div className="mt-2 rounded-xl border border-border bg-muted/40 p-4">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <ShieldCheck className="h-4 w-4 text-success shrink-0" />
+                  <ClipboardList className="h-4 w-4 text-primary shrink-0" />
                   <span>
-                    Pago 100% seguro procesado por{" "}
-                    <span className="font-semibold text-foreground">Stripe</span>. Tus datos están
-                    protegidos con cifrado SSL.
+                    Tu pedido pasa directamente a cocina. El pago se realiza en caja al momento de retirar.
                   </span>
                 </div>
               </div>
@@ -169,12 +183,12 @@ function CheckoutForm({ items, total }: { items: CartItem[]; total: number }) {
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Redirigiendo a Stripe...
+                    Enviando pedido...
                   </>
                 ) : (
                   <>
-                    <CreditCard className="mr-2 h-5 w-5" />
-                    Pagar {formatCOP(total)}
+                    <ClipboardList className="mr-2 h-5 w-5" />
+                    Hacer Pedido · {formatCOP(total)}
                   </>
                 )}
               </Button>
@@ -199,11 +213,11 @@ function CheckoutForm({ items, total }: { items: CartItem[]; total: number }) {
             </div>
             <Separator className="my-4 bg-border" />
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Total</span>
+              <span className="text-sm text-muted-foreground">Total a pagar en caja</span>
               <span className="text-xl font-bold text-foreground">{formatCOP(total)}</span>
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              Impuestos incluidos. Precios en pesos colombianos (COP).
+              Precios en pesos colombianos (COP) · IVA incluido
             </p>
           </div>
         </div>

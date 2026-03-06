@@ -26,6 +26,14 @@ class OrderCreate(BaseModel):
     items: list[OrderItemCreate] = Field(..., min_length=1)
 
 
+class PublicOrderCreate(BaseModel):
+    """Schema for unauthenticated ecommerce orders."""
+    client_name: str = Field(..., min_length=2, max_length=100)
+    table_number: str = Field(default="", max_length=20)
+    notes: str = Field(default="", max_length=1000)
+    items: list[OrderItemCreate] = Field(..., min_length=1)
+
+
 class OrderStatusUpdate(BaseModel):
     status: str = Field(..., pattern="^(pendiente|en_preparacion|completado|cancelado)$")
 
