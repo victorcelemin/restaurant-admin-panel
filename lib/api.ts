@@ -1,7 +1,12 @@
-// Always use relative /api/* paths — Next.js rewrites proxy them to Railway in production.
-// In local dev with the backend running on 8000, set NEXT_PUBLIC_API_URL=http://localhost:8000
-// in .env.local to bypass the proxy and hit the backend directly.
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? ""
+// In production: calls go to /api/proxy/* which is a Next.js route handler that
+// proxies to Railway with correct CORS headers — no browser CORS issues.
+// In local dev: NEXT_PUBLIC_API_URL=http://localhost:8000 hits the backend directly.
+const IS_LOCAL = typeof window !== "undefined" && window.location.hostname === "localhost"
+const API_BASE = process.env.NEXT_PUBLIC_API_URL
+  ? process.env.NEXT_PUBLIC_API_URL
+  : IS_LOCAL
+    ? "http://localhost:8000"
+    : "/api/proxy"
 
 class ApiError extends Error {
   status: number
