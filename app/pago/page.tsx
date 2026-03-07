@@ -52,7 +52,7 @@ function CheckoutForm({ items, total }: { items: CartItem[]; total: number }) {
     setError(null)
 
     try {
-      const res = await fetch(`${API_BASE}/api/orders/public`, {
+      const res = await fetch(`${API_BASE}/orders/public`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

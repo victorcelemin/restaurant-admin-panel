@@ -18,7 +18,12 @@ export async function OPTIONS() {
 
 async function proxy(req: NextRequest, segments: string[]) {
   const qs = new URL(req.url).search
-  const url = `${RAILWAY}/api/${segments.join("/")}${qs}`
+  // Build target URL. Append trailing slash to satisfy FastAPI routing
+  // (FastAPI redirects /api/products → /api/products/ which strips Authorization on redirect).
+  const path = segments.join("/")
+  // Only add trailing slash if path doesn't already end with slash and has no query-only suffix
+  const trailingSlash = path.endsWith("/") ? "" : "/"
+  const url = `${RAILWAY}/api/${path}${trailingSlash}${qs}`
 
   const headers: Record<string, string> = {}
   req.headers.forEach((v, k) => {
@@ -29,7 +34,20 @@ async function proxy(req: NextRequest, segments: string[]) {
 
   let upstream: Response
   try {
-    upstream = await fetch(url, { method: req.method, headers, body, redirect: "follow" })
+    // Do NOT follow redirects automatically — Railway's 307 redirects to http:// which
+    // causes Node.js fetch to strip the Authorization header (cross-scheme redirect).
+    // Instead we handle redirects manually to preserve all headers.
+    upstream = await fetch(url, { method: req.method, headers, body, redirect: "manual" })
+
+    // If Railway redirects, follow manually with the same headers (preserves Authorization)
+    if (upstream.status === 307 || upstream.status === 308) {
+      let location = upstream.headers.get("location") || ""
+      // Force https if Railway returns http
+      if (location.startsWith("http://")) {
+        location = "https://" + location.slice(7)
+      }
+      upstream = await fetch(location, { method: req.method, headers, body: ["GET", "HEAD"].includes(req.method) ? undefined : body, redirect: "manual" })
+    }
   } catch (e: any) {
     return NextResponse.json({ error: `Proxy error: ${e.message}` }, { status: 502, headers: CORS })
   }

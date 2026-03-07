@@ -1,6 +1,10 @@
 // ALWAYS use the local Next.js proxy route — never call Railway directly from the browser.
 // This avoids all CORS issues. The proxy at /api/proxy/[...path] forwards to Railway server-side.
 // Works in both local dev (Next.js dev server proxies) and production (Vercel serverless).
+//
+// PATH CONVENTION: paths here do NOT include /api/ prefix.
+// The proxy route handler already prepends /api/ when forwarding to Railway.
+// e.g. request("/auth/login") → fetch("/api/proxy/auth/login") → Railway /api/auth/login
 const API_BASE = "/api/proxy"
 
 class ApiError extends Error {
@@ -71,13 +75,13 @@ export interface LoginResponse {
 
 export const auth = {
   login: (username: string, password: string) =>
-    request<LoginResponse>("/api/auth/login", {
+    request<LoginResponse>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ username, password }),
     }),
-  me: () => request<User>("/api/auth/me"),
+  me: () => request<User>("/auth/me"),
   register: (data: { username: string; name: string; password: string; role: string; shift: string }) =>
-    request<User>("/api/auth/register", {
+    request<User>("/auth/register", {
       method: "POST",
       body: JSON.stringify(data),
     }),
@@ -116,15 +120,15 @@ export const products = {
     if (params?.active_only !== undefined) qs.set("active_only", String(params.active_only))
     if (params?.category) qs.set("category", params.category)
     if (params?.search) qs.set("search", params.search)
-    return request<Product[]>(`/api/products/?${qs}`)
+    return request<Product[]>(`/products?${qs}`)
   },
-  get: (id: number) => request<Product>(`/api/products/${id}`),
+  get: (id: number) => request<Product>(`/products/${id}`),
   create: (data: { name: string; category: string; price: number; stock: number; unit: string; min_stock: number }) =>
-    request<Product>("/api/products/", { method: "POST", body: JSON.stringify(data) }),
+    request<Product>("/products", { method: "POST", body: JSON.stringify(data) }),
   update: (id: number, data: Partial<{ name: string; category: string; price: number; stock: number; unit: string; min_stock: number; active: boolean }>) =>
-    request<Product>(`/api/products/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  delete: (id: number) => request<void>(`/api/products/${id}`, { method: "DELETE" }),
-  categories: () => request<string[]>("/api/products/categories"),
+    request<Product>(`/products/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  delete: (id: number) => request<void>(`/products/${id}`, { method: "DELETE" }),
+  categories: () => request<string[]>("/products/categories"),
 }
 
 // --- Orders ---
@@ -156,13 +160,13 @@ export const orders = {
     if (params?.status) qs.set("status", params.status)
     if (params?.search) qs.set("search", params.search)
     if (params?.date) qs.set("date", params.date)
-    return request<Order[]>(`/api/orders/?${qs}`)
+    return request<Order[]>(`/orders?${qs}`)
   },
-  get: (id: number) => request<Order>(`/api/orders/${id}`),
+  get: (id: number) => request<Order>(`/orders/${id}`),
   create: (data: { client_name: string; payment_method: string; notes: string; items: { product_id: number; quantity: number; notes: string }[] }) =>
-    request<Order>("/api/orders/", { method: "POST", body: JSON.stringify(data) }),
+    request<Order>("/orders", { method: "POST", body: JSON.stringify(data) }),
   updateStatus: (id: number, status: string) =>
-    request<Order>(`/api/orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+    request<Order>(`/orders/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
 }
 
 // --- Inventory ---
@@ -182,10 +186,10 @@ export const inventory = {
     const qs = new URLSearchParams()
     if (params?.product_id) qs.set("product_id", String(params.product_id))
     if (params?.type) qs.set("type", params.type)
-    return request<StockMovement[]>(`/api/inventory/movements?${qs}`)
+    return request<StockMovement[]>(`/inventory/movements?${qs}`)
   },
   createMovement: (data: { product_id: number; type: string; quantity: number; notes: string }) =>
-    request<StockMovement>("/api/inventory/movements", { method: "POST", body: JSON.stringify(data) }),
+    request<StockMovement>("/inventory/movements", { method: "POST", body: JSON.stringify(data) }),
 }
 
 // --- Reports ---
@@ -214,10 +218,10 @@ export interface DailyCloseData {
 }
 
 export const reports = {
-  daily: () => request<DailyReport>("/api/reports/daily"),
-  weekly: () => request<WeeklySales[]>("/api/reports/weekly"),
-  closeDay: () => request<DailyCloseData>("/api/reports/close-day", { method: "POST" }),
-  closes: () => request<DailyCloseData[]>("/api/reports/closes"),
+  daily: () => request<DailyReport>("/reports/daily"),
+  weekly: () => request<WeeklySales[]>("/reports/weekly"),
+  closeDay: () => request<DailyCloseData>("/reports/close-day", { method: "POST" }),
+  closes: () => request<DailyCloseData[]>("/reports/closes"),
 }
 
 // --- Invoices ---
@@ -237,24 +241,24 @@ export const invoices = {
     const qs = new URLSearchParams()
     if (params?.status) qs.set("status", params.status)
     if (params?.search) qs.set("search", params.search)
-    return request<Invoice[]>(`/api/invoices/?${qs}`)
+    return request<Invoice[]>(`/invoices?${qs}`)
   },
 }
 
 // --- Users ---
 export const users = {
-  list: () => request<User[]>("/api/users/"),
-  get: (id: number) => request<User>(`/api/users/${id}`),
+  list: () => request<User[]>("/users"),
+  get: (id: number) => request<User>(`/users/${id}`),
   update: (id: number, data: Partial<{ name: string; role: string; shift: string; active: boolean; password: string }>) =>
-    request<User>(`/api/users/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-  delete: (id: number) => request<void>(`/api/users/${id}`, { method: "DELETE" }),
+    request<User>(`/users/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  delete: (id: number) => request<void>(`/users/${id}`, { method: "DELETE" }),
 }
 
 // --- Settings ---
 export const settings = {
-  get: () => request<Record<string, string>>("/api/settings/"),
+  get: () => request<Record<string, string>>("/settings"),
   update: (key: string, value: string) =>
-    request<{ key: string; value: string }>("/api/settings/", { method: "PUT", body: JSON.stringify({ key, value }) }),
+    request<{ key: string; value: string }>("/settings", { method: "PUT", body: JSON.stringify({ key, value }) }),
 }
 
 export { ApiError }
