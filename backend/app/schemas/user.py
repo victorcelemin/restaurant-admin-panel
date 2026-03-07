@@ -40,5 +40,7 @@ class Token(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    # Length limits prevent bcrypt CPU-exhaustion DoS (bcrypt truncates at 72 bytes
+    # but Python still loads the full string; large inputs waste server time).
+    username: str = Field(..., min_length=1, max_length=50)
+    password: str = Field(..., min_length=1, max_length=128)

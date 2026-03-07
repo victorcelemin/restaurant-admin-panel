@@ -23,13 +23,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
-function setCookie(name: string, value: string, days = 1) {
-  const expires = new Date(Date.now() + days * 864e5).toUTCString()
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`
+// Set the HttpOnly session cookie via a server-side route handler.
+// This prevents JavaScript (including XSS payloads) from reading the cookie.
+async function setSessionCookie(token: string) {
+  await fetch("/api/auth/session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  })
 }
 
-function deleteCookie(name: string) {
-  document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`
+// Clear the HttpOnly session cookie via server-side route handler.
+async function clearSessionCookie() {
+  await fetch("/api/auth/session", { method: "DELETE" })
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -50,12 +56,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.setItem("user", JSON.stringify(u))
         })
         .catch((err) => {
-          // Only clear session on 401 (invalid token), not on network errors
+          // Only clear session on 401 (invalid/expired token), not on network errors
           const status = err?.status ?? err?.response?.status
           if (status === 401) {
             localStorage.removeItem("token")
             localStorage.removeItem("user")
-            deleteCookie("auth_token")
+            clearSessionCookie()
             setToken(null)
             setUser(null)
           }
@@ -71,15 +77,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const res = await authApi.login(username, password)
     localStorage.setItem("token", res.access_token)
     localStorage.setItem("user", JSON.stringify(res.user))
-    setCookie("auth_token", res.access_token, 1)
+    // Set HttpOnly cookie server-side (not readable by JS / XSS)
+    await setSessionCookie(res.access_token)
     setToken(res.access_token)
     setUser(res.user)
   }, [])
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     localStorage.removeItem("token")
     localStorage.removeItem("user")
-    deleteCookie("auth_token")
+    await clearSessionCookie()
     setToken(null)
     setUser(null)
   }, [])

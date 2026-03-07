@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 
-const BACKEND = "https://backend-production-7916.up.railway.app"
+// RAILWAY_BACKEND must be set in Vercel environment variables (never hardcoded here).
+// SYSTEM_USERNAME / SYSTEM_PASSWORD must also be set as Vercel secrets.
+const BACKEND = process.env.RAILWAY_BACKEND
+const SYSTEM_USERNAME = process.env.SYSTEM_USERNAME
+const SYSTEM_PASSWORD = process.env.SYSTEM_PASSWORD
 
 // This route proxies the products list with a system token so the public menu
 // can show products without CORS issues or needing the user to be authenticated.
@@ -9,13 +13,16 @@ let cachedToken: string | null = null
 let tokenExpiry = 0
 
 async function getSystemToken(): Promise<string> {
+  if (!BACKEND || !SYSTEM_USERNAME || !SYSTEM_PASSWORD) {
+    throw new Error("Server misconfiguration: backend credentials not set")
+  }
   const now = Date.now()
   if (cachedToken && now < tokenExpiry) return cachedToken
 
   const res = await fetch(`${BACKEND}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username: "admin", password: "admin123" }),
+    body: JSON.stringify({ username: SYSTEM_USERNAME, password: SYSTEM_PASSWORD }),
     cache: "no-store",
   })
 
@@ -36,7 +43,7 @@ export async function GET(request: Request) {
     if (searchParams.get("search")) qs.set("search", searchParams.get("search")!)
 
     const token = await getSystemToken()
-    const res = await fetch(`${BACKEND}/api/products/?${qs}`, {
+    const res = await fetch(`${BACKEND!}/api/products/?${qs}`, {
       headers: { Authorization: `Bearer ${token}` },
       next: { revalidate: 30 }, // cache 30 seconds
     })
@@ -47,7 +54,7 @@ export async function GET(request: Request) {
         cachedToken = null
         tokenExpiry = 0
         const token2 = await getSystemToken()
-        const res2 = await fetch(`${BACKEND}/api/products/?${qs}`, {
+        const res2 = await fetch(`${BACKEND!}/api/products/?${qs}`, {
           headers: { Authorization: `Bearer ${token2}` },
           next: { revalidate: 30 },
         })

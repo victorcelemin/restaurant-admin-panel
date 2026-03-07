@@ -80,14 +80,17 @@ async def stripe_webhook(request: Request):
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature", "")
 
-    if webhook_secret:
-        try:
-            event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
-        except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
-    else:
-        import json
-        event = json.loads(payload)
+    if not webhook_secret:
+        # Reject webhook requests if signature verification is not configured.
+        # Accepting unsigned payloads would allow anyone to forge payment events.
+        raise HTTPException(
+            status_code=503,
+            detail="Webhook no configurado. Agrega STRIPE_WEBHOOK_SECRET al entorno.",
+        )
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, webhook_secret)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]

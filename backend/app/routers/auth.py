@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -8,9 +10,12 @@ from app.security import verify_password, hash_password, create_access_token, ge
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
+limiter = Limiter(key_func=get_remote_address)
+
 
 @router.post("/login", response_model=Token)
-def login(data: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")  # Brute-force protection: max 10 login attempts per IP per minute
+def login(request: Request, data: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == data.username).first()
     if not user or not verify_password(data.password, user.password_hash):
         raise HTTPException(

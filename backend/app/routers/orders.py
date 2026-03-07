@@ -1,5 +1,7 @@
 import secrets
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from datetime import date, timedelta
@@ -14,10 +16,18 @@ from app.schemas.order import OrderOut, OrderCreate, OrderStatusUpdate, PublicOr
 from app.security import get_current_user, require_role
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
+limiter = Limiter(key_func=get_remote_address)
 
 
 def _next_order_number(db: Session) -> str:
-    last = db.query(Order).order_by(Order.id.desc()).first()
+    # Use SELECT ... FOR UPDATE to lock the latest row and prevent race conditions
+    # where two concurrent requests read the same last order and generate duplicate numbers.
+    last = (
+        db.query(Order)
+        .order_by(Order.id.desc())
+        .with_for_update()
+        .first()
+    )
     num = 1 if not last else int(last.order_number.split("-")[1]) + 1
     return f"ORD-{num:03d}"
 
@@ -110,7 +120,8 @@ def create_order(
 
 
 @router.post("/public", response_model=OrderOut, status_code=status.HTTP_201_CREATED)
-def create_public_order(data: PublicOrderCreate, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")  # Abuse protection: max 5 public orders per IP per minute
+def create_public_order(request: Request, data: PublicOrderCreate, db: Session = Depends(get_db)):
     """
     Public endpoint — no authentication required.
     Used by the ecommerce menu to place orders directly to the kitchen.

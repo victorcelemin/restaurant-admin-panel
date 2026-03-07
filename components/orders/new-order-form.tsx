@@ -113,27 +113,37 @@ export function NewOrderForm() {
     setItems(items.filter((i) => i.localId !== localId))
   }
 
+  // Escape HTML special characters to prevent XSS via document.write
+  function escHtml(str: string): string {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;")
+  }
+
   function printTicket(orderId: string) {
     const printWindow = window.open("", "_blank", "width=300,height=600")
     if (!printWindow) return
     const itemsHtml = items
       .map(
         (item) =>
-          `<tr><td>${item.quantity}x ${item.product.name}</td><td style="text-align:right">${formatCurrency(item.product.price * item.quantity)}</td></tr>${item.notes ? `<tr><td colspan="2" style="font-size:10px;color:#666">  Nota: ${item.notes}</td></tr>` : ""}`
+          `<tr><td>${escHtml(String(item.quantity))}x ${escHtml(item.product.name)}</td><td style="text-align:right">${escHtml(formatCurrency(item.product.price * item.quantity))}</td></tr>${item.notes ? `<tr><td colspan="2" style="font-size:10px;color:#666">  Nota: ${escHtml(item.notes)}</td></tr>` : ""}`
       )
       .join("")
     printWindow.document.write(`
-      <html><head><title>Ticket ${orderId}</title>
+      <html><head><title>Ticket ${escHtml(orderId)}</title>
       <style>body{font-family:monospace;font-size:12px;margin:10px;width:280px}table{width:100%}td{padding:2px 0}hr{border:none;border-top:1px dashed #000}.center{text-align:center}.right{text-align:right}.bold{font-weight:bold}</style>
       </head><body>
         <div class="center"><h3>RestaurantOS</h3></div>
         <hr/>
-        <p><strong>Pedido:</strong> ${orderId}<br/><strong>Cliente:</strong> ${clientName}<br/><strong>Fecha:</strong> ${new Date().toLocaleString("es-CO")}<br/><strong>Pago:</strong> ${paymentMethod}</p>
+        <p><strong>Pedido:</strong> ${escHtml(orderId)}<br/><strong>Cliente:</strong> ${escHtml(clientName)}<br/><strong>Fecha:</strong> ${escHtml(new Date().toLocaleString("es-CO"))}<br/><strong>Pago:</strong> ${escHtml(paymentMethod)}</p>
         <hr/>
         <table>${itemsHtml}</table>
         <hr/>
-        <p class="right bold">TOTAL: ${formatCurrency(total)}</p>
-        ${orderNotes ? `<hr/><p>Notas: ${orderNotes}</p>` : ""}
+        <p class="right bold">TOTAL: ${escHtml(formatCurrency(total))}</p>
+        ${orderNotes ? `<hr/><p>Notas: ${escHtml(orderNotes)}</p>` : ""}
         <hr/>
         <p class="center" style="font-size:10px;">Gracias por su compra</p>
       </body></html>

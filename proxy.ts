@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 
 const ADMIN_ROUTES = ["/admin"]
-const PUBLIC_ROUTES = ["/login", "/menu", "/pago", "/pago/exitoso", "/pago/cancelado", "/"]
 
+// This file acts as Next.js Edge Middleware (this fork uses "proxy.ts" instead of "middleware.ts").
+// It runs on the Edge before page rendering, providing server-side route protection.
+// The exported function must be named "proxy" in this framework version.
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const token = request.cookies.get("auth_token")?.value
@@ -12,7 +14,10 @@ export function proxy(request: NextRequest) {
   if (isAdminRoute && !token) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
-    url.searchParams.set("from", pathname)
+    // Only carry the from param if it starts with /admin to prevent open redirect
+    if (pathname.startsWith("/admin")) {
+      url.searchParams.set("from", pathname)
+    }
     return NextResponse.redirect(url)
   }
 
@@ -20,7 +25,8 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
+  // Exclude static assets and Next.js internals from proxy
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 }

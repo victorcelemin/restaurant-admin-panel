@@ -27,8 +27,11 @@ export default function LoginPage() {
     try {
       await login(username, password)
       toast.success("¡Bienvenido!")
-      const from = new URLSearchParams(window.location.search).get("from")
-      router.push(from?.startsWith("/admin") ? from : "/admin")
+      // Validate the redirect target to prevent open redirect attacks.
+      // Only allow paths that start with /admin and contain no protocol or host.
+      const rawFrom = new URLSearchParams(window.location.search).get("from") ?? ""
+      const isSafeRedirect = rawFrom.startsWith("/admin") && !rawFrom.includes("//") && !rawFrom.includes(":")
+      router.push(isSafeRedirect ? rawFrom : "/admin")
     } catch (err: any) {
       toast.error(err.message || "Credenciales incorrectas")
     } finally { setLoading(false) }
@@ -166,17 +169,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo credentials */}
-          <div className="mt-6 rounded-2xl p-4 border"
-            style={{ background: "oklch(0.13 0.022 255)", borderColor: "oklch(0.24 0.028 255)" }}>
-            <p className="text-xs font-bold mb-2" style={{ color: "oklch(0.78 0.18 195)" }}>
-              ✦ Credenciales de prueba
-            </p>
-            <div className="grid grid-cols-2 gap-1 text-xs" style={{ color: "oklch(0.55 0.012 255)" }}>
-              <span><span className="text-white font-semibold">Usuario:</span> admin</span>
-              <span><span className="text-white font-semibold">Contraseña:</span> admin123</span>
-            </div>
-          </div>
+
         </div>
       </div>
     </div>
