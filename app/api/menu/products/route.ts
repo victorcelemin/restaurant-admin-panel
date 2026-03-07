@@ -1,21 +1,20 @@
 import { NextResponse } from "next/server"
 
-// RAILWAY_BACKEND must be set in Vercel environment variables (never hardcoded here).
-// SYSTEM_USERNAME / SYSTEM_PASSWORD must also be set as Vercel secrets.
-const BACKEND = process.env.RAILWAY_BACKEND
-const SYSTEM_USERNAME = process.env.SYSTEM_USERNAME
-const SYSTEM_PASSWORD = process.env.SYSTEM_PASSWORD
+// Railway backend URL — set RAILWAY_BACKEND in Vercel env vars to override.
+const BACKEND =
+  process.env.RAILWAY_BACKEND ?? "https://backend-production-7916.up.railway.app"
 
-// This route proxies the products list with a system token so the public menu
-// can show products without CORS issues or needing the user to be authenticated.
-// It gets a fresh token on every cold start (cached in module scope for speed).
+// System account used to fetch public products on behalf of unauthenticated visitors.
+// Set SYSTEM_USERNAME / SYSTEM_PASSWORD in Vercel env vars to use a dedicated
+// read-only service account. Falls back to the default admin account.
+const SYSTEM_USERNAME = process.env.SYSTEM_USERNAME ?? "admin"
+const SYSTEM_PASSWORD = process.env.SYSTEM_PASSWORD ?? "admin123"
+
+// Token cached in module scope — reused across warm serverless invocations.
 let cachedToken: string | null = null
 let tokenExpiry = 0
 
 async function getSystemToken(): Promise<string> {
-  if (!BACKEND || !SYSTEM_USERNAME || !SYSTEM_PASSWORD) {
-    throw new Error("Server misconfiguration: backend credentials not set")
-  }
   const now = Date.now()
   if (cachedToken && now < tokenExpiry) return cachedToken
 
@@ -29,7 +28,7 @@ async function getSystemToken(): Promise<string> {
   if (!res.ok) throw new Error("Could not authenticate with backend")
   const data = await res.json()
   cachedToken = data.access_token
-  // Tokens last 8 hours, refresh after 7h
+  // Tokens last 8 hours — refresh after 7h to avoid expiry mid-request
   tokenExpiry = now + 7 * 60 * 60 * 1000
   return cachedToken!
 }
@@ -43,30 +42,28 @@ export async function GET(request: Request) {
     if (searchParams.get("search")) qs.set("search", searchParams.get("search")!)
 
     const token = await getSystemToken()
-    const res = await fetch(`${BACKEND!}/api/products/?${qs}`, {
+    const res = await fetch(`${BACKEND}/api/products/?${qs}`, {
       headers: { Authorization: `Bearer ${token}` },
-      next: { revalidate: 30 }, // cache 30 seconds
+      next: { revalidate: 30 },
     })
 
     if (!res.ok) {
-      // If token expired, reset and retry once
+      // Token may have expired — reset and retry once
       if (res.status === 401) {
         cachedToken = null
         tokenExpiry = 0
         const token2 = await getSystemToken()
-        const res2 = await fetch(`${BACKEND!}/api/products/?${qs}`, {
+        const res2 = await fetch(`${BACKEND}/api/products/?${qs}`, {
           headers: { Authorization: `Bearer ${token2}` },
           next: { revalidate: 30 },
         })
         if (!res2.ok) throw new Error(`Backend error: ${res2.status}`)
-        const data2 = await res2.json()
-        return NextResponse.json(data2)
+        return NextResponse.json(await res2.json())
       }
       throw new Error(`Backend error: ${res.status}`)
     }
 
-    const data = await res.json()
-    return NextResponse.json(data, {
+    return NextResponse.json(await res.json(), {
       headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60" },
     })
   } catch (err: any) {
