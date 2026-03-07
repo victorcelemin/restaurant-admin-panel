@@ -1,12 +1,7 @@
-// In production: calls go to /api/proxy/* which is a Next.js route handler that
-// proxies to Railway with correct CORS headers — no browser CORS issues.
-// In local dev: NEXT_PUBLIC_API_URL=http://localhost:8000 hits the backend directly.
-const IS_LOCAL = typeof window !== "undefined" && window.location.hostname === "localhost"
-const API_BASE = process.env.NEXT_PUBLIC_API_URL
-  ? process.env.NEXT_PUBLIC_API_URL
-  : IS_LOCAL
-    ? "http://localhost:8000"
-    : "/api/proxy"
+// ALWAYS use the local Next.js proxy route — never call Railway directly from the browser.
+// This avoids all CORS issues. The proxy at /api/proxy/[...path] forwards to Railway server-side.
+// Works in both local dev (Next.js dev server proxies) and production (Vercel serverless).
+const API_BASE = "/api/proxy"
 
 class ApiError extends Error {
   status: number

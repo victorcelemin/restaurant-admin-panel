@@ -1,75 +1,56 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-const RAILWAY = "https://backend-production-7916.up.railway.app"
+// Server-side only — never exposed to the browser bundle.
+// In production (Vercel): proxies to Railway.
+// In local dev: proxies to localhost:8000 (set RAILWAY_BACKEND in .env.local to override).
+const RAILWAY = process.env.RAILWAY_BACKEND ?? "https://backend-production-7916.up.railway.app"
 
-const CORS_HEADERS = {
+const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, Accept",
   "Access-Control-Max-Age": "86400",
 }
 
-// Handle preflight OPTIONS — respond immediately, no need to hit Railway
 export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: CORS_HEADERS })
+  return new NextResponse(null, { status: 204, headers: CORS })
 }
 
-async function proxyRequest(request: NextRequest, segments: string[]) {
-  const path = segments.join("/")
-  const { search } = new URL(request.url)
-  const target = `${RAILWAY}/api/${path}${search}`
+async function proxy(req: NextRequest, segments: string[]) {
+  const qs = new URL(req.url).search
+  const url = `${RAILWAY}/api/${segments.join("/")}${qs}`
 
-  // Forward all headers except host
   const headers: Record<string, string> = {}
-  request.headers.forEach((value, key) => {
-    if (key !== "host") headers[key] = value
+  req.headers.forEach((v, k) => {
+    if (k !== "host" && k !== "x-forwarded-host") headers[k] = v
   })
 
-  const body = request.method !== "GET" && request.method !== "HEAD"
-    ? await request.arrayBuffer()
-    : undefined
+  const body = ["GET", "HEAD"].includes(req.method) ? undefined : await req.arrayBuffer()
 
-  const upstream = await fetch(target, {
-    method: request.method,
-    headers,
-    body,
-    // Don't follow redirects automatically
-    redirect: "manual",
-  })
+  let upstream: Response
+  try {
+    upstream = await fetch(url, { method: req.method, headers, body, redirect: "follow" })
+  } catch (e: any) {
+    return NextResponse.json({ error: `Proxy error: ${e.message}` }, { status: 502, headers: CORS })
+  }
 
-  const responseHeaders: Record<string, string> = { ...CORS_HEADERS }
-  upstream.headers.forEach((value, key) => {
-    // Don't forward these — let Next.js handle them
-    if (!["transfer-encoding", "connection", "keep-alive"].includes(key)) {
-      responseHeaders[key] = value
+  const outHeaders: Record<string, string> = { ...CORS }
+  upstream.headers.forEach((v, k) => {
+    if (!["transfer-encoding", "connection", "keep-alive", "content-encoding"].includes(k)) {
+      outHeaders[k] = v
     }
   })
+  // Always force content-type for JSON responses
+  if (outHeaders["content-type"]?.includes("json")) {
+    outHeaders["content-type"] = "application/json; charset=utf-8"
+  }
 
-  const responseBody = upstream.status === 204 ? null : await upstream.arrayBuffer()
-
-  return new NextResponse(responseBody, {
-    status: upstream.status,
-    headers: responseHeaders,
-  })
+  const resBody = upstream.status === 204 ? null : await upstream.arrayBuffer()
+  return new NextResponse(resBody, { status: upstream.status, headers: outHeaders })
 }
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
-  const { path } = await params
-  return proxyRequest(request, path)
-}
-export async function POST(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
-  const { path } = await params
-  return proxyRequest(request, path)
-}
-export async function PUT(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
-  const { path } = await params
-  return proxyRequest(request, path)
-}
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
-  const { path } = await params
-  return proxyRequest(request, path)
-}
-export async function DELETE(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
-  const { path } = await params
-  return proxyRequest(request, path)
-}
+export const GET    = (req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) => ctx.params.then(p => proxy(req, p.path))
+export const POST   = (req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) => ctx.params.then(p => proxy(req, p.path))
+export const PUT    = (req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) => ctx.params.then(p => proxy(req, p.path))
+export const PATCH  = (req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) => ctx.params.then(p => proxy(req, p.path))
+export const DELETE = (req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) => ctx.params.then(p => proxy(req, p.path))

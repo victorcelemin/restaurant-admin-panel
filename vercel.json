@@ -1,7 +1,1 @@
-{
-  "build": {
-    "env": {
-      "BACKEND_URL": "https://backend-production-7916.up.railway.app"
-    }
-  }
-}
+{}
