@@ -20,7 +20,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
-import { PlusCircle, Search, Eye, Printer, Clock } from "lucide-react"
+import { PlusCircle, Search, Eye, Printer, Clock, CheckCircle } from "lucide-react"
+import { toast } from "sonner"
 import { orders as ordersApi, type Order } from "@/lib/api"
 import { useApi } from "@/hooks/use-api"
 
@@ -53,7 +54,26 @@ export function OrdersList() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
 
-  const { data: ordersList, loading } = useApi(() => ordersApi.list(), [])
+  const { data: ordersList, loading, refetch } = useApi(() => ordersApi.list(), [])
+  const [updatingId, setUpdatingId] = useState<number | null>(null)
+
+  async function handleCompleteOrder(orderId: number) {
+    try {
+      setUpdatingId(orderId)
+      await ordersApi.updateStatus(orderId, "completado")
+      toast.success("Pedido completado exitosamente")
+      // Close dialog if open
+      if (selectedOrder?.id === orderId) {
+        setSelectedOrder(null)
+      }
+      // Refresh the list
+      await refetch()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Error al completar el pedido")
+    } finally {
+      setUpdatingId(null)
+    }
+  }
 
   const filtered = (ordersList ?? []).filter((o) => {
     const matchesSearch =
@@ -171,6 +191,18 @@ export function OrdersList() {
                 <span className="text-lg font-bold text-foreground">
                   {formatCurrency(order.total)}
                 </span>
+                {order.status !== "completado" && order.status !== "cancelado" && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-success"
+                    onClick={() => handleCompleteOrder(order.id)}
+                    disabled={updatingId === order.id}
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="sr-only">Completar pedido</span>
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -274,16 +306,30 @@ export function OrdersList() {
                   </div>
                 </>
               )}
-              <Button
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
-                onClick={() => {
-                  handlePrint(selectedOrder)
-                  setSelectedOrder(null)
-                }}
-              >
-                <Printer className="mr-2 h-4 w-4" />
-                Imprimir Ticket
-              </Button>
+              <div className="flex gap-2">
+                {selectedOrder.status !== "completado" && selectedOrder.status !== "cancelado" && (
+                  <Button
+                    className="flex-1 bg-success text-success-foreground hover:bg-success/90"
+                    onClick={() => {
+                      handleCompleteOrder(selectedOrder.id)
+                    }}
+                    disabled={updatingId === selectedOrder.id}
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Completar Pedido
+                  </Button>
+                )}
+                <Button
+                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                  onClick={() => {
+                    handlePrint(selectedOrder)
+                    setSelectedOrder(null)
+                  }}
+                >
+                  <Printer className="mr-2 h-4 w-4" />
+                  Imprimir Ticket
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
