@@ -49,18 +49,21 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     let errorDetail = `Error ${res.status}`
+    let responseBody = ''
     try {
-      const body = await res.json()
-      errorDetail = body.detail || errorDetail
-    } catch {
-      // If response is not JSON, try to get text
+      const text = await res.text()
+      responseBody = text
       try {
-        const text = await res.text()
-        if (text) errorDetail = text.substring(0, 200) // limit length
+        const body = JSON.parse(text)
+        errorDetail = body.detail || errorDetail
       } catch {
-        // ignore
+        // not JSON
+        if (text) errorDetail = text.substring(0, 200)
       }
+    } catch {
+      // ignore
     }
+    console.error(`API Error ${res.status}:`, responseBody)
     throw new ApiError(errorDetail, res.status)
   }
 
