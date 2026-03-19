@@ -48,8 +48,20 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({ detail: "Error del servidor" }))
-    throw new ApiError(body.detail || `Error ${res.status}`, res.status)
+    let errorDetail = `Error ${res.status}`
+    try {
+      const body = await res.json()
+      errorDetail = body.detail || errorDetail
+    } catch {
+      // If response is not JSON, try to get text
+      try {
+        const text = await res.text()
+        if (text) errorDetail = text.substring(0, 200) // limit length
+      } catch {
+        // ignore
+      }
+    }
+    throw new ApiError(errorDetail, res.status)
   }
 
   if (res.status === 204) return undefined as T

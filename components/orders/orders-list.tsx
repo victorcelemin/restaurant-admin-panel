@@ -31,21 +31,39 @@ function formatCurrency(amount: number) {
 
 function getStatusColor(status: string) {
   switch (status) {
-    case "pendiente": return "bg-warning/15 text-warning"
-    case "en_preparacion": return "bg-chart-3/15 text-chart-3"
-    case "completado": return "bg-success/15 text-success"
-    case "cancelado": return "bg-destructive/15 text-destructive"
-    default: return "bg-secondary text-secondary-foreground"
+    case "pendiente":
+    case "pending":
+      return "bg-warning/15 text-warning"
+    case "en_preparacion":
+    case "preparing":
+      return "bg-chart-3/15 text-chart-3"
+    case "completado":
+    case "completed":
+      return "bg-success/15 text-success"
+    case "cancelado":
+    case "cancelled":
+      return "bg-destructive/15 text-destructive"
+    default:
+      return "bg-secondary text-secondary-foreground"
   }
 }
 
 function getStatusLabel(status: string) {
   switch (status) {
-    case "pendiente": return "Pendiente"
-    case "en_preparacion": return "En Preparacion"
-    case "completado": return "Completado"
-    case "cancelado": return "Cancelado"
-    default: return status
+    case "pendiente":
+    case "pending":
+      return "Pendiente"
+    case "en_preparacion":
+    case "preparing":
+      return "En Preparacion"
+    case "completado":
+    case "completed":
+      return "Completado"
+    case "cancelado":
+    case "cancelled":
+      return "Cancelado"
+    default:
+      return status
   }
 }
 
@@ -60,7 +78,8 @@ export function OrdersList() {
   async function handleCompleteOrder(orderId: number) {
     try {
       setUpdatingId(orderId)
-      await ordersApi.updateStatus(orderId, "completado")
+      console.log("Attempting to complete order", orderId, "with status:", "completed")
+      await ordersApi.updateStatus(orderId, "completed")
       toast.success("Pedido completado exitosamente")
       // Close dialog if open
       if (selectedOrder?.id === orderId) {
@@ -69,6 +88,7 @@ export function OrdersList() {
       // Refresh the list
       await refetch()
     } catch (error) {
+      console.error("Error completing order:", error)
       toast.error(error instanceof Error ? error.message : "Error al completar el pedido")
     } finally {
       setUpdatingId(null)
@@ -79,7 +99,16 @@ export function OrdersList() {
     const matchesSearch =
       o.client_name.toLowerCase().includes(search.toLowerCase()) ||
       o.order_number.toLowerCase().includes(search.toLowerCase())
-    const matchesStatus = statusFilter === "all" || o.status === statusFilter
+    const matchesStatus = statusFilter === "all" || 
+      o.status === statusFilter || 
+      (statusFilter === "completado" && o.status === "completed") ||
+      (statusFilter === "completed" && o.status === "completado") ||
+      (statusFilter === "cancelado" && o.status === "cancelled") ||
+      (statusFilter === "cancelled" && o.status === "cancelado") ||
+      (statusFilter === "pendiente" && o.status === "pending") ||
+      (statusFilter === "pending" && o.status === "pendiente") ||
+      (statusFilter === "en_preparacion" && o.status === "preparing") ||
+      (statusFilter === "preparing" && o.status === "en_preparacion")
     return matchesSearch && matchesStatus
   })
 
@@ -191,7 +220,7 @@ export function OrdersList() {
                 <span className="text-lg font-bold text-foreground">
                   {formatCurrency(order.total)}
                 </span>
-                {order.status !== "completado" && order.status !== "cancelado" && (
+                {order.status !== "completado" && order.status !== "completed" && order.status !== "cancelado" && order.status !== "cancelled" && (
                   <Button
                     variant="ghost"
                     size="icon"
@@ -307,7 +336,7 @@ export function OrdersList() {
                 </>
               )}
               <div className="flex gap-2">
-                {selectedOrder.status !== "completado" && selectedOrder.status !== "cancelado" && (
+                {selectedOrder.status !== "completado" && selectedOrder.status !== "completed" && selectedOrder.status !== "cancelado" && selectedOrder.status !== "cancelled" && (
                   <Button
                     className="flex-1 bg-success text-success-foreground hover:bg-success/90"
                     onClick={() => {
