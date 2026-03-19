@@ -90,12 +90,37 @@ async function proxy(req: NextRequest, segments: string[]) {
       outHeaders[k] = v
     }
   })
-  // Always force content-type for JSON responses
-  if (outHeaders["content-type"]?.includes("json")) {
+
+  let resBody: ArrayBuffer | null = null
+  // For error responses (>=400), ensure the body is JSON
+  if (upstream.status >= 400) {
+    const text = await upstream.text().catch(() => "")
+    let jsonBody: any = { detail: text || `Error ${upstream.status}` }
+    try {
+      // Try to parse as JSON in case it already is
+      const parsed = JSON.parse(text)
+      if (parsed && typeof parsed === 'object') {
+        jsonBody = parsed
+      }
+    } catch {
+      // not JSON, keep the text as detail
+    }
     outHeaders["content-type"] = "application/json; charset=utf-8"
+    const encoded = new TextEncoder().encode(JSON.stringify(jsonBody))
+    resBody = encoded.buffer as unknown as ArrayBuffer
+  } else {
+    // For successful responses, keep original behavior
+    if (upstream.status === 204) {
+      resBody = null
+    } else {
+      resBody = await upstream.arrayBuffer()
+      // Always force content-type for JSON responses
+      if (outHeaders["content-type"]?.includes("json")) {
+        outHeaders["content-type"] = "application/json; charset=utf-8"
+      }
+    }
   }
 
-  const resBody = upstream.status === 204 ? null : await upstream.arrayBuffer()
   return new NextResponse(resBody, { status: upstream.status, headers: outHeaders })
 }
 
