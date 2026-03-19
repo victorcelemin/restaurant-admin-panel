@@ -78,7 +78,7 @@ export function OrdersList() {
   async function handleCompleteOrder(orderId: number) {
     try {
       setUpdatingId(orderId)
-      await ordersApi.updateStatus(orderId, "completado")
+      await ordersApi.updateStatus(orderId, "en_preparacion")
       toast.success("Pedido completado exitosamente")
       // Close dialog if open
       if (selectedOrder?.id === orderId) {
@@ -88,14 +88,16 @@ export function OrdersList() {
       await refetch()
     } catch (error) {
       console.error("Error completing order:", error)
+      let errorMsg = "Error al completar el pedido"
       if (error instanceof Error) {
-        console.error("Error message:", error.message)
-        // If it's an ApiError, it might have more details
-        if (error.constructor.name === 'ApiError') {
-          console.error("Status:", (error as any).status)
+        errorMsg = error.message
+        // If it's an ApiError, include status
+        const anyError = error as any
+        if (anyError.status) {
+          errorMsg = `Error ${anyError.status}: ${error.message}`
         }
       }
-      toast.error(error instanceof Error ? error.message : "Error al completar el pedido")
+      toast.error(errorMsg)
     } finally {
       setUpdatingId(null)
     }
