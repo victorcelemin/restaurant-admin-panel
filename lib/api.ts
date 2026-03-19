@@ -63,7 +63,6 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     } catch {
       // ignore
     }
-    console.error(`API Error ${res.status}:`, responseBody)
     throw new ApiError(errorDetail, res.status)
   }
 
