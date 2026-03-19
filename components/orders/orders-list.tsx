@@ -78,7 +78,6 @@ export function OrdersList() {
   async function handleCompleteOrder(orderId: number) {
     try {
       setUpdatingId(orderId)
-      console.log("Attempting to complete order", orderId, "with status:", "completed")
       await ordersApi.updateStatus(orderId, "completed")
       toast.success("Pedido completado exitosamente")
       // Close dialog if open
@@ -88,7 +87,6 @@ export function OrdersList() {
       // Refresh the list
       await refetch()
     } catch (error) {
-      console.error("Error completing order:", error)
       toast.error(error instanceof Error ? error.message : "Error al completar el pedido")
     } finally {
       setUpdatingId(null)
