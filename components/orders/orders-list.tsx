@@ -20,7 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
-import { PlusCircle, Search, Eye, Printer, Clock, CheckCircle } from "lucide-react"
+import { PlusCircle, Search, Eye, Printer, Clock, CheckCircle, ArrowRight } from "lucide-react"
 import { toast } from "sonner"
 import { orders as ordersApi, type Order } from "@/lib/api"
 import { useApi } from "@/hooks/use-api"
@@ -75,10 +75,37 @@ export function OrdersList() {
   const { data: ordersList, loading, refetch } = useApi(() => ordersApi.list(), [])
   const [updatingId, setUpdatingId] = useState<number | null>(null)
 
-  async function handleCompleteOrder(orderId: number) {
+  async function handlePrepareOrder(orderId: number) {
     try {
       setUpdatingId(orderId)
       await ordersApi.updateStatus(orderId, "en_preparacion")
+      toast.success("Pedido enviado a cocina")
+      // Close dialog if open
+      if (selectedOrder?.id === orderId) {
+        setSelectedOrder(null)
+      }
+      // Refresh the list
+      await refetch()
+    } catch (error) {
+      console.error("Error sending to kitchen:", error)
+      let errorMsg = "Error al enviar a cocina"
+      if (error instanceof Error) {
+        errorMsg = error.message
+        const anyError = error as any
+        if (anyError.status) {
+          errorMsg = `Error ${anyError.status}: ${error.message}`
+        }
+      }
+      toast.error(errorMsg)
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
+  async function handleCompleteOrder(orderId: number) {
+    try {
+      setUpdatingId(orderId)
+      await ordersApi.updateStatus(orderId, "completado")
       toast.success("Pedido completado exitosamente")
       // Close dialog if open
       if (selectedOrder?.id === orderId) {
@@ -91,7 +118,6 @@ export function OrdersList() {
       let errorMsg = "Error al completar el pedido"
       if (error instanceof Error) {
         errorMsg = error.message
-        // If it's an ApiError, include status
         const anyError = error as any
         if (anyError.status) {
           errorMsg = `Error ${anyError.status}: ${error.message}`
@@ -228,18 +254,44 @@ export function OrdersList() {
                 <span className="text-lg font-bold text-foreground">
                   {formatCurrency(order.total)}
                 </span>
-                {order.status !== "completado" && order.status !== "completed" && order.status !== "cancelado" && order.status !== "cancelled" && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-muted-foreground hover:text-success"
-                    onClick={() => handleCompleteOrder(order.id)}
-                    disabled={updatingId === order.id}
-                  >
-                    <CheckCircle className="h-4 w-4" />
-                    <span className="sr-only">Completar pedido</span>
-                  </Button>
-                )}
+                {(() => {
+                  const isPending = order.status === "pendiente" || order.status === "pending";
+                  const isPreparing = order.status === "en_preparacion" || order.status === "preparing";
+                  const isCompleted = order.status === "completado" || order.status === "completed";
+                  const isCancelled = order.status === "cancelado" || order.status === "cancelled";
+                  
+                  if (isPending) {
+                    return (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-warning"
+                        onClick={() => handlePrepareOrder(order.id)}
+                        disabled={updatingId === order.id}
+                        title="Enviar a cocina"
+                      >
+                        <ArrowRight className="h-4 w-4" />
+                        <span className="sr-only">Enviar a cocina</span>
+                      </Button>
+                    );
+                  }
+                  if (isPreparing) {
+                    return (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-success"
+                        onClick={() => handleCompleteOrder(order.id)}
+                        disabled={updatingId === order.id}
+                        title="Completar pedido"
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                        <span className="sr-only">Completar pedido</span>
+                      </Button>
+                    );
+                  }
+                  return null;
+                })()}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -344,18 +396,36 @@ export function OrdersList() {
                 </>
               )}
               <div className="flex gap-2">
-                {selectedOrder.status !== "completado" && selectedOrder.status !== "completed" && selectedOrder.status !== "cancelado" && selectedOrder.status !== "cancelled" && (
-                  <Button
-                    className="flex-1 bg-success text-success-foreground hover:bg-success/90"
-                    onClick={() => {
-                      handleCompleteOrder(selectedOrder.id)
-                    }}
-                    disabled={updatingId === selectedOrder.id}
-                  >
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Completar Pedido
-                  </Button>
-                )}
+                {(() => {
+                  const isPending = selectedOrder.status === "pendiente" || selectedOrder.status === "pending";
+                  const isPreparing = selectedOrder.status === "en_preparacion" || selectedOrder.status === "preparing";
+                  
+                  if (isPending) {
+                    return (
+                      <Button
+                        className="flex-1 bg-warning text-warning-foreground hover:bg-warning/90"
+                        onClick={() => handlePrepareOrder(selectedOrder.id)}
+                        disabled={updatingId === selectedOrder.id}
+                      >
+                        <ArrowRight className="mr-2 h-4 w-4" />
+                        Enviar a Cocina
+                      </Button>
+                    );
+                  }
+                  if (isPreparing) {
+                    return (
+                      <Button
+                        className="flex-1 bg-success text-success-foreground hover:bg-success/90"
+                        onClick={() => handleCompleteOrder(selectedOrder.id)}
+                        disabled={updatingId === selectedOrder.id}
+                      >
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Completar Pedido
+                      </Button>
+                    );
+                  }
+                  return null;
+                })()}
                 <Button
                   className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
                   onClick={() => {
